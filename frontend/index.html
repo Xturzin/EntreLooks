@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+   <title>EntreLooks</title>
+   <link rel="stylesheet" href="css/reset.css">
+   <link rel="stylesheet" href="css/variables.css">
+   <link rel="stylesheet" href="css/main.css">
+   <link rel="stylesheet" href="css/components/navbar.css">
+</head>
+<body>
+   <div id="app">
+      <main id="page-content"></main>
+      <nav id="bottom-nav">
+         <button class="tab-item active" data-page="home">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Início</span>
+         </button>
+         <button class="tab-item" data-page="wardrobe">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/></svg>
+            <span>Armário</span>
+         </button>
+         <button class="tab-item" data-page="looks">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span>Looks</span>
+         </button>
+         <button class="tab-item" data-page="ai">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <span>IA</span>
+         </button>
+         <button class="tab-item" data-page="style">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Estilo</span>
+         </button>
+      </nav>
+   </div>
+
+   <script src="js/config.js"></script>
+   <script src="js/pages/home.js"></script>
+   <script src="js/pages/wardrobe.js"></script>
+   <script src="js/pages/looks.js"></script>
+   <script src="js/pages/ai.js"></script>
+   <script src="js/pages/style.js"></script>
+   <script src="js/app.js"></script>
+</body>
+</html>
