@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.env
+
+# Node (se usar ferramentas auxiliares)
+node_modules/
+
+# Frontend config local
+frontend/js/config.js
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Build / cache
+dist/
+*.egg-info/
