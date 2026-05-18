@@ -41,3 +41,50 @@ body {
    color: var(--text-muted);
    margin-top: var(--space-xs);
 }
+
+body {
+   font-family: var(--font);
+   background: var(--bg);
+   color: var(--text);
+   font-size: var(--text-base);
+   -webkit-font-smoothing: antialiased;
+}
+
+#app {
+   display: flex;
+   flex-direction: column;
+   height: 100dvh;
+   max-width: 480px;
+   margin: 0 auto;
+   position: relative;
+}
+
+#page-content {
+   flex: 1;
+   overflow-y: auto;
+   padding-bottom: var(--tab-height);
+}
+
+.page {
+   padding: var(--space-lg) var(--space-md);
+}
+
+.page-header {
+   margin-bottom: var(--space-lg);
+}
+
+.page-title {
+   font-size: var(--text-2xl);
+   font-weight: 700;
+   letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+   margin-top: var(--space-xs);
+}
+
+.hidden {
+   display: none !important;
+}

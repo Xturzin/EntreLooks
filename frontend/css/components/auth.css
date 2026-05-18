@@ -1,0 +1,108 @@
+#auth-view {
+   max-width: 480px;
+   margin: 0 auto;
+}
+
+.auth-page {
+   min-height: 100dvh;
+   display: flex;
+   flex-direction: column;
+   justify-content: center;
+   padding: var(--space-lg) var(--space-md);
+}
+
+.auth-header {
+   text-align: center;
+   margin-bottom: var(--space-xl);
+}
+
+.auth-title {
+   font-size: 34px;
+   font-weight: 800;
+   letter-spacing: -1px;
+   color: var(--primary);
+}
+
+.auth-subtitle {
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+   margin-top: var(--space-xs);
+}
+
+.auth-card {
+   background: var(--surface);
+   border-radius: var(--radius-lg);
+   padding: var(--space-lg);
+   box-shadow: var(--shadow-md);
+}
+
+.auth-tabs {
+   display: flex;
+   background: var(--bg);
+   border-radius: var(--radius-sm);
+   padding: 3px;
+   margin-bottom: var(--space-lg);
+}
+
+.auth-tab {
+   flex: 1;
+   padding: 8px;
+   border-radius: 6px;
+   font-size: var(--text-sm);
+   font-weight: 500;
+   color: var(--text-muted);
+   transition: all 0.2s;
+}
+
+.auth-tab.active {
+   background: var(--surface);
+   color: var(--text);
+   box-shadow: var(--shadow-sm);
+}
+
+.auth-form {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-sm);
+}
+
+.auth-form input {
+   width: 100%;
+   padding: 14px var(--space-md);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-sm);
+   font-size: var(--text-base);
+   font-family: var(--font);
+   background: var(--bg);
+   color: var(--text);
+   outline: none;
+   transition: border-color 0.2s;
+}
+
+.auth-form input:focus {
+   border-color: var(--primary);
+}
+
+.auth-error {
+   font-size: var(--text-sm);
+   color: #E53E3E;
+   text-align: center;
+   padding: var(--space-xs) 0;
+}
+
+.btn-primary {
+   width: 100%;
+   padding: 14px;
+   background: var(--primary);
+   color: white;
+   border-radius: var(--radius-sm);
+   font-size: var(--text-base);
+   font-weight: 600;
+   font-family: var(--font);
+   transition: opacity 0.2s;
+   margin-top: var(--space-xs);
+}
+
+.btn-primary:disabled {
+   opacity: 0.5;
+}
