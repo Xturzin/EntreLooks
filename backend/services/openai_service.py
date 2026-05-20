@@ -100,7 +100,7 @@ Guarda-roupa do usuário: {wardrobe_summary}"""
 
    return response.choices[0].message.content
 
-   async def generate_style_summary(stats: dict, clothes: list) -> str:
+async def generate_style_summary(stats: dict, clothes: list) -> str:
    if not clothes:
       return None
 
