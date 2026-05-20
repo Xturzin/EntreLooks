@@ -4,6 +4,7 @@ from config.settings import settings
 from routes.auth import router as auth_router
 from routes.clothes import router as clothes_router
 from routes.looks import router as looks_router
+from routes.ai import router as ai_router
 
 app = FastAPI(title="EntreLooks API", version="1.0.0")
 
@@ -18,6 +19,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(clothes_router)
 app.include_router(looks_router)
+app.include_router(ai_router)
 
 @app.get("/")
 def root():

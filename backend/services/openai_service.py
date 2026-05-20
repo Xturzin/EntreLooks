@@ -37,10 +37,10 @@ async def categorize_clothing(image_base64: str) -> dict:
 async def generate_look_ai(clothes: list, mode: str) -> list:
    clothes_data = [
       {
-         "id":      c["id"],
-         "type":    c.get("type", "peça"),
-         "color":   c.get("color", ""),
-         "style":   c.get("style", ""),
+         "id":       c["id"],
+         "type":     c.get("type", "peça"),
+         "color":    c.get("color", ""),
+         "style":    c.get("style", ""),
          "occasion": c.get("occasion", "")
       }
       for c in clothes
@@ -70,3 +70,32 @@ Formato obrigatório:
    content = content.replace("```json", "").replace("```", "").strip()
    result  = json.loads(content)
    return result.get("clothes_ids", [])
+
+async def chat_with_stylist(message: str, history: list, clothes: list) -> str:
+   if clothes:
+      items            = [f"{c.get('type', 'peça')} {c.get('color', '')}".strip() for c in clothes]
+      wardrobe_summary = ", ".join(items)
+   else:
+      wardrobe_summary = "guarda-roupa ainda vazio"
+
+   system_prompt = f"""Você é Luna, uma estilista pessoal brasileira descontraída e prática.
+Você conhece o guarda-roupa do usuário e ajuda a montar looks, dar dicas de moda e responder dúvidas de estilo.
+Seja direta, simpática e use linguagem natural brasileira. Evite respostas longas demais.
+Quando sugerir um look, mencione as peças pelo tipo e cor.
+
+Guarda-roupa do usuário: {wardrobe_summary}"""
+
+   messages = [{"role": "system", "content": system_prompt}]
+
+   for msg in history:
+      messages.append({"role": msg["role"], "content": msg["content"]})
+
+   messages.append({"role": "user", "content": message})
+
+   response = await client.chat.completions.create(
+      model="gpt-4o",
+      messages=messages,
+      max_tokens=500
+   )
+
+   return response.choices[0].message.content
