@@ -6,3 +6,4 @@ httpx
 Pillow
 openai
 rembg
+onnxruntime
