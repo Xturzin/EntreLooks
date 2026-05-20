@@ -99,3 +99,25 @@ Guarda-roupa do usuário: {wardrobe_summary}"""
    )
 
    return response.choices[0].message.content
+
+   async def generate_style_summary(stats: dict, clothes: list) -> str:
+   if not clothes:
+      return None
+
+   prompt = f"""Analise o guarda-roupa abaixo e escreva um parágrafo curto e descontraído descrevendo o estilo pessoal do usuário.
+Escreva em português, de forma direta e natural, como uma estilista falando para o cliente.
+Máximo 3 frases.
+
+Total de peças: {stats['total']}
+Cores dominantes: {[c['name'] for c in stats['dominant_colors']]}
+Estilos: {[s['name'] for s in stats['top_styles']]}
+Tipos de peça: {[t['name'] for t in stats['top_types']]}
+Ocasiões: {[o['name'] for o in stats['top_occasions']]}"""
+
+   response = await client.chat.completions.create(
+      model="gpt-4o",
+      messages=[{"role": "user", "content": prompt}],
+      max_tokens=200
+   )
+
+   return response.choices[0].message.content.strip()
