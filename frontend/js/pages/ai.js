@@ -6,12 +6,12 @@ const AIPage = {
          <div class="page ai-page">
             <div class="page-header">
                <h1 class="page-title">Estilista IA</h1>
-               <p class="page-subtitle">Luna, sua consultora de moda</p>
+               <p class="page-subtitle">Dora, sua consultora de moda</p>
             </div>
             <div class="chat-messages" id="chat-messages">
                <div class="chat-bubble ai">
-                  Oi! Sou a Luna, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
-               </div>
+                     Oi! Sou a Dora, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
+                  </div>
             </div>
          </div>
          <div class="chat-input-area">
