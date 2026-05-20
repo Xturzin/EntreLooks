@@ -1,0 +1,143 @@
+/* seletor de modo */
+.mode-bar {
+   display: flex;
+   gap: var(--space-sm);
+   overflow-x: auto;
+   padding-bottom: var(--space-sm);
+   margin-bottom: var(--space-md);
+   scrollbar-width: none;
+}
+
+.mode-bar::-webkit-scrollbar {
+   display: none;
+}
+
+.mode-pill {
+   flex-shrink: 0;
+   padding: 6px 16px;
+   border-radius: var(--radius-full);
+   border: 1px solid var(--border);
+   font-size: var(--text-sm);
+   font-family: var(--font);
+   color: var(--text-muted);
+   background: var(--surface);
+   transition: all 0.2s;
+   text-transform: capitalize;
+}
+
+.mode-pill.active {
+   background: var(--primary);
+   border-color: var(--primary);
+   color: white;
+}
+
+/* look gerado */
+.look-result {
+   margin-top: var(--space-lg);
+}
+
+.look-card {
+   background: var(--surface);
+   border-radius: var(--radius-lg);
+   border: 1px solid var(--border);
+   overflow: hidden;
+}
+
+.look-header {
+   padding: var(--space-md);
+   border-bottom: 1px solid var(--border);
+}
+
+.look-mode {
+   font-size: var(--text-xs);
+   font-weight: 600;
+   text-transform: uppercase;
+   letter-spacing: 0.5px;
+   color: var(--text-muted);
+}
+
+.look-clothes {
+   display: grid;
+   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+   gap: 1px;
+   background: var(--border);
+}
+
+.look-item {
+   background: var(--surface);
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+}
+
+.look-item img {
+   width: 100%;
+   aspect-ratio: 3 / 4;
+   object-fit: cover;
+}
+
+.look-item span {
+   font-size: var(--text-xs);
+   color: var(--text-muted);
+   padding: var(--space-xs);
+   text-align: center;
+   text-transform: capitalize;
+}
+
+.look-actions {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: var(--space-sm);
+   padding: var(--space-md);
+}
+
+.look-error {
+   text-align: center;
+   font-size: var(--text-sm);
+   color: #C53030;
+   padding: var(--space-md);
+   background: #FFF5F5;
+   border-radius: var(--radius-md);
+}
+
+/* looks salvos */
+.saved-looks {
+   margin-top: var(--space-xl);
+}
+
+.section-title {
+   font-size: var(--text-lg);
+   font-weight: 700;
+   margin-bottom: var(--space-md);
+}
+
+.saved-grid {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-md);
+}
+
+.saved-look-card {
+   background: var(--surface);
+   border-radius: var(--radius-md);
+   border: 1px solid var(--border);
+   overflow: hidden;
+}
+
+.saved-look-clothes {
+   display: grid;
+   grid-template-columns: repeat(4, 1fr);
+   gap: 1px;
+   background: var(--border);
+}
+
+.saved-look-clothes img {
+   width: 100%;
+   aspect-ratio: 1;
+   object-fit: cover;
+}
+
+.saved-look-card .look-mode {
+   display: block;
+   padding: var(--space-sm) var(--space-md);
+}
