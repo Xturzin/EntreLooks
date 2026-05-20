@@ -1,12 +1,14 @@
 const WardrobePage = {
-   selectedFile: null,
+   selectedFile:  null,
+   clothes:       [],
+   activeFilter:  'all',
 
    render() {
       return `
          <div class="page">
             <div class="page-header">
                <h1 class="page-title">Armário</h1>
-               <p class="page-subtitle">Adicione suas roupas</p>
+               <p class="page-subtitle">Suas roupas</p>
             </div>
 
             <div class="upload-area">
@@ -28,17 +30,23 @@ const WardrobePage = {
             </div>
 
             <div class="upload-status hidden" id="upload-status"></div>
+
+            <div class="filter-bar hidden" id="filter-bar"></div>
+            <div class="clothes-grid" id="clothes-grid"></div>
          </div>
       `
    },
 
-   init() {
+   async init() {
       this.selectedFile = null
+      this.activeFilter = 'all'
+      this.bindUploadEvents()
+      await this.loadClothes()
+   },
 
-      const input   = document.getElementById('cloth-input')
-      const trigger = document.getElementById('upload-trigger')
-
-      trigger.addEventListener('click', () => input.click())
+   bindUploadEvents() {
+      const input = document.getElementById('cloth-input')
+      document.getElementById('upload-trigger').addEventListener('click', () => input.click())
 
       input.addEventListener('change', (e) => {
          const file = e.target.files[0]
@@ -67,8 +75,8 @@ const WardrobePage = {
       const btn    = document.getElementById('upload-submit')
       const status = document.getElementById('upload-status')
 
-      btn.disabled    = true
-      btn.textContent = 'Processando...'
+      btn.disabled       = true
+      btn.textContent    = 'Processando...'
       status.className   = 'upload-status'
       status.textContent = 'Removendo fundo e identificando a peça...'
       status.classList.remove('hidden')
@@ -92,21 +100,97 @@ const WardrobePage = {
 
          status.className   = 'upload-status success'
          status.textContent = `"${cloth.type || 'Peça'}" salva no armário!`
+
          this.resetUpload()
+         await this.loadClothes()
 
       } catch (e) {
          status.className   = 'upload-status error'
          status.textContent = e.message || 'Algo deu errado. Tente de novo.'
-         btn.disabled    = false
-         btn.textContent = 'Salvar no armário'
+         btn.disabled       = false
+         btn.textContent    = 'Salvar no armário'
       }
    },
 
    resetUpload() {
       this.selectedFile = null
-      document.getElementById('cloth-input').value = ''
+      document.getElementById('cloth-input').value     = ''
       document.getElementById('upload-preview').classList.add('hidden')
       document.getElementById('upload-submit').disabled    = false
       document.getElementById('upload-submit').textContent = 'Salvar no armário'
+   },
+
+   async loadClothes() {
+      try {
+         const response = await fetch(`${CONFIG.API_URL}/clothes/`, {
+            headers: Auth.getHeaders()
+         })
+         if (!response.ok) throw new Error()
+         this.clothes = await response.json()
+      } catch (e) {
+         this.clothes = []
+      }
+
+      this.renderFilters()
+      this.renderGrid(this.clothes)
+   },
+
+   renderFilters() {
+      const bar = document.getElementById('filter-bar')
+
+      if (this.clothes.length === 0) {
+         bar.classList.add('hidden')
+         return
+      }
+
+      const types = ['all', ...new Set(this.clothes.map(c => c.type).filter(Boolean))]
+
+      bar.innerHTML = types.map(type => `
+         <button class="filter-pill ${type === this.activeFilter ? 'active' : ''}" data-filter="${type}">
+            ${type === 'all' ? 'Todas' : type}
+         </button>
+      `).join('')
+
+      bar.classList.remove('hidden')
+
+      bar.querySelectorAll('.filter-pill').forEach(pill => {
+         pill.addEventListener('click', () => {
+            this.activeFilter = pill.dataset.filter
+            bar.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'))
+            pill.classList.add('active')
+            this.applyFilter()
+         })
+      })
+   },
+
+   applyFilter() {
+      const filtered = this.activeFilter === 'all'
+         ? this.clothes
+         : this.clothes.filter(c => c.type === this.activeFilter)
+      this.renderGrid(filtered)
+   },
+
+   renderGrid(clothes) {
+      const grid = document.getElementById('clothes-grid')
+
+      if (clothes.length === 0) {
+         grid.innerHTML = `
+            <div class="empty-state">
+               <p>Nenhuma roupa aqui ainda</p>
+               <span>Adicione sua primeira peça acima</span>
+            </div>
+         `
+         return
+      }
+
+      grid.innerHTML = clothes.map(cloth => `
+         <div class="cloth-card">
+            <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
+            <div class="cloth-info">
+               <span class="cloth-type">${cloth.type || 'Peça'}</span>
+               ${cloth.color ? `<span class="cloth-color">${cloth.color}</span>` : ''}
+            </div>
+         </div>
+      `).join('')
    }
 }
