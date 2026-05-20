@@ -3,3 +3,13 @@ uvicorn[standard]
 python-dotenv
 supabase
 httpx
+Pillow
+openai
+rembgfastapi
+uvicorn[standard]
+python-dotenv
+supabase
+httpx
+Pillow
+openai
+rembg
