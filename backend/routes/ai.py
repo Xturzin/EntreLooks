@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -33,7 +35,7 @@ async def chat(data: ChatRequest, user=Depends(get_current_user)):
 
    try:
       reply = await chat_with_stylist(data.message, history, clothes)
-   except Exception:
-      raise HTTPException(status_code=500, detail="Erro ao processar resposta da IA. Tente novamente.")
-
-   return {"reply": reply}
+      return {"reply": reply}
+   except Exception as e:
+      logger.error(f"Erro no chat_with_stylist: {type(e).__name__}: {e}")
+      raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {str(e)}")

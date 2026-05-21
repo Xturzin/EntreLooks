@@ -86,7 +86,9 @@ const AIPage = {
             this.history.push({ role: 'assistant', content: data.reply })
          } else if (response) {
             this.history.pop()
-            this.addBubble('ai', 'Tive um problema aqui. Pode repetir?')
+            const err    = await response.json().catch(() => ({}))
+            const detail = err.detail || 'Tive um problema aqui. Pode repetir?'
+            this.addBubble('ai', `[${response.status}] ${detail}`)
          }
 
       } catch (e) {
