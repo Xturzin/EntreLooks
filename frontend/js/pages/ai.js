@@ -88,7 +88,7 @@ const AIPage = {
             this.history.pop()
             const err    = await response.json().catch(() => ({}))
             const detail = err.detail || 'Tive um problema aqui. Pode repetir?'
-            this.addBubble('ai', `[${response.status}] ${detail}`)
+            this.addBubble('ai', detail)
          }
 
       } catch (e) {
