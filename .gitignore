@@ -9,7 +9,7 @@ venv/
 node_modules/
 
 # Frontend config local
-frontend/js/config.js
+frontend/js/config.example.js
 
 # Sistema
 .DS_Store
