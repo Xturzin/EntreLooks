@@ -26,12 +26,14 @@ const API = {
       return this.request(endpoint)
    },
 
-   post(endpoint, body) {
+   post(endpoint, body, signal = null) {
       const isFormData = body instanceof FormData
-      return this.request(endpoint, {
+      const options    = {
          method: 'POST',
          body:   isFormData ? body : JSON.stringify(body)
-      })
+      }
+      if (signal) options.signal = signal
+      return this.request(endpoint, options)
    },
 
    patch(endpoint) {

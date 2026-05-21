@@ -27,7 +27,7 @@ const AIPage = {
    },
 
    init() {
-      this.history = []
+      // não reseta history aqui para preservar conversa entre navegações
 
       const input   = document.getElementById('chat-input')
       const sendBtn = document.getElementById('chat-send')
@@ -39,6 +39,21 @@ const AIPage = {
             this.send()
          }
       })
+
+      this.restoreHistory()
+   },
+
+   restoreHistory() {
+      if (this.history.length === 0) return
+
+      const messages = document.getElementById('chat-messages')
+      this.history.forEach(msg => {
+         const div       = document.createElement('div')
+         div.className   = `chat-bubble ${msg.role === 'user' ? 'user' : 'ai'}`
+         div.textContent = msg.content
+         messages.appendChild(div)
+      })
+      messages.scrollTop = messages.scrollHeight
    },
 
    async send() {
@@ -53,26 +68,39 @@ const AIPage = {
 
       this.addBubble('user', message)
       const loadingId = this.addBubble('ai', 'Pensando...', true)
-
       this.history.push({ role: 'user', content: message })
 
-      const response = await API.post('/ai/chat', {
-         message,
-         history: this.history.slice(-10)
-      })
+      const controller = new AbortController()
+      const timeout    = setTimeout(() => controller.abort(), 30000)
 
-      this.removeBubble(loadingId)
+      try {
+         const response = await API.post(
+            '/ai/chat',
+            { message, history: this.history.slice(-10) },
+            controller.signal
+         )
 
-      if (response?.ok) {
-         const data  = await response.json()
-         this.addBubble('ai', data.reply)
-         this.history.push({ role: 'assistant', content: data.reply })
-      } else if (response) {
-         this.addBubble('ai', 'Tive um problema aqui. Pode repetir?')
+         if (response?.ok) {
+            const data = await response.json()
+            this.addBubble('ai', data.reply)
+            this.history.push({ role: 'assistant', content: data.reply })
+         } else if (response) {
+            this.history.pop()
+            this.addBubble('ai', 'Tive um problema aqui. Pode repetir?')
+         }
+
+      } catch (e) {
+         this.history.pop()
+         const msg = e.name === 'AbortError'
+            ? 'A resposta demorou demais. Tente novamente.'
+            : 'Erro de conexão. Tente novamente.'
+         this.addBubble('ai', msg)
+      } finally {
+         clearTimeout(timeout)
+         this.removeBubble(loadingId)
+         sendBtn.disabled = false
+         input.focus()
       }
-
-      sendBtn.disabled = false
-      input.focus()
    },
 
    addBubble(role, content, isLoading = false) {
