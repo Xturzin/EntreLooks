@@ -2,7 +2,10 @@ import json
 from openai import AsyncOpenAI
 from config.settings import settings
 
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+client = AsyncOpenAI(
+   api_key=settings.GROQ_API_KEY,
+   base_url="https://api.groq.com/openai/v1"
+)
 
 async def categorize_clothing(image_base64: str) -> dict:
    prompt = """Analise esta peça de roupa e responda SOMENTE em JSON, sem texto extra.
@@ -16,7 +19,7 @@ async def categorize_clothing(image_base64: str) -> dict:
    }"""
 
    response = await client.chat.completions.create(
-      model="gpt-4o",
+      model="llama-3.3-70b-versatile",
       messages=[{
          "role": "user",
          "content": [
@@ -61,7 +64,7 @@ Formato obrigatório:
 {{"clothes_ids": ["id1", "id2", "id3"]}}"""
 
    response = await client.chat.completions.create(
-      model="gpt-4o",
+      model="llama-3.3-70b-versatile",
       messages=[{"role": "user", "content": prompt}],
       max_tokens=200
    )
@@ -93,7 +96,7 @@ Guarda-roupa do usuário: {wardrobe_summary}"""
    messages.append({"role": "user", "content": message})
 
    response = await client.chat.completions.create(
-      model="gpt-4o",
+      model="llama-3.3-70b-versatile",
       messages=messages,
       max_tokens=500
    )
@@ -115,7 +118,7 @@ Tipos de peça: {[t['name'] for t in stats['top_types']]}
 Ocasiões: {[o['name'] for o in stats['top_occasions']]}"""
 
    response = await client.chat.completions.create(
-      model="gpt-4o",
+      model="llama-3.3-70b-versatile",
       messages=[{"role": "user", "content": prompt}],
       max_tokens=200
    )
