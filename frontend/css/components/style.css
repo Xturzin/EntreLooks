@@ -158,3 +158,17 @@
 .btn-generate:disabled {
    opacity: 0.5;
 }
+
+.style-header {
+   display: flex;
+   align-items: flex-start;
+   justify-content: space-between;
+}
+
+.logout-btn {
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+   font-family: var(--font);
+   padding: 4px 0;
+   text-decoration: underline;
+}

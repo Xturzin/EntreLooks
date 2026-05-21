@@ -81,35 +81,27 @@ const WardrobePage = {
       status.textContent = 'Removendo fundo e identificando a peça...'
       status.classList.remove('hidden')
 
-      try {
-         const formData = new FormData()
-         formData.append('file', this.selectedFile)
+      const formData = new FormData()
+      formData.append('file', this.selectedFile)
 
-         const response = await fetch(`${CONFIG.API_URL}/clothes/`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${Auth.getToken()}` },
-            body: formData
-         })
+      const response = await API.post('/clothes/', formData)
 
-         if (!response.ok) {
-            const err = await response.json()
-            throw new Error(err.detail || 'Erro ao salvar a roupa')
-         }
+      if (!response) return
 
-         const cloth = await response.json()
-
+      if (!response.ok) {
+         const err          = await response.json()
+         status.className   = 'upload-status error'
+         status.textContent = err.detail || 'Algo deu errado. Tente de novo.'
+      } else {
+         const cloth        = await response.json()
          status.className   = 'upload-status success'
          status.textContent = `"${cloth.type || 'Peça'}" salva no armário!`
-
          this.resetUpload()
          await this.loadClothes()
-
-      } catch (e) {
-         status.className   = 'upload-status error'
-         status.textContent = e.message || 'Algo deu errado. Tente de novo.'
-         btn.disabled       = false
-         btn.textContent    = 'Salvar no armário'
       }
+
+      btn.disabled    = false
+      btn.textContent = 'Salvar no armário'
    },
 
    resetUpload() {
@@ -121,16 +113,10 @@ const WardrobePage = {
    },
 
    async loadClothes() {
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/clothes/`, {
-            headers: Auth.getHeaders()
-         })
-         if (!response.ok) throw new Error()
-         this.clothes = await response.json()
-      } catch (e) {
-         this.clothes = []
-      }
+      const response = await API.get('/clothes/')
+      if (!response) return
 
+      this.clothes = response.ok ? await response.json() : []
       this.renderFilters()
       this.renderGrid(this.clothes)
    },

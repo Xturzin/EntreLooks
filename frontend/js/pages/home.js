@@ -1,5 +1,6 @@
 const HomePage = {
    currentLook: null,
+   autoMode:    'casual',
 
    render() {
       return `
@@ -10,7 +11,7 @@ const HomePage = {
             </div>
 
             <button class="quick-btn" id="quick-btn">
-               <span>Me ajuda a me vestir</span>
+               <span id="quick-btn-text">Me ajuda a me vestir</span>
                <span class="quick-btn-label" id="quick-mode-label"></span>
             </button>
 
@@ -36,14 +37,12 @@ const HomePage = {
       this.loadStats()
 
       document.getElementById('quick-btn').addEventListener('click', () => this.quickGenerate())
-
-      // atalhos para outras abas
       document.getElementById('stat-wardrobe').addEventListener('click', () => navigate('wardrobe'))
       document.getElementById('stat-looks-card').addEventListener('click', () => navigate('looks'))
    },
 
    setupGreeting() {
-      const hour  = new Date().getHours()
+      const hour = new Date().getHours()
       let greeting, mode
 
       if (hour >= 5 && hour < 12) {
@@ -58,64 +57,54 @@ const HomePage = {
       }
 
       this.autoMode = mode
-      document.getElementById('greeting-label').textContent    = greeting
-      document.getElementById('quick-mode-label').textContent  = `look ${mode}`
+      document.getElementById('greeting-label').textContent   = greeting
+      document.getElementById('quick-mode-label').textContent = `look ${mode}`
    },
 
    async loadStats() {
-      try {
-         const [clothesRes, looksRes] = await Promise.all([
-            fetch(`${CONFIG.API_URL}/clothes/`, { headers: Auth.getHeaders() }),
-            fetch(`${CONFIG.API_URL}/looks/`, { headers: Auth.getHeaders() })
-         ])
+      const [clothesRes, looksRes] = await Promise.all([
+         API.get('/clothes/'),
+         API.get('/looks/')
+      ])
 
-         if (clothesRes.ok) {
-            const clothes = await clothesRes.json()
-            document.getElementById('stat-clothes').textContent = clothes.length
-         }
+      if (clothesRes?.ok) {
+         const clothes = await clothesRes.json()
+         document.getElementById('stat-clothes').textContent = clothes.length
+      }
 
-         if (looksRes.ok) {
-            const looks = await looksRes.json()
-            document.getElementById('stat-looks').textContent = looks.length
-         }
-      } catch (e) {
-         // silent fail, stats ficam com "-"
+      if (looksRes?.ok) {
+         const looks = await looksRes.json()
+         document.getElementById('stat-looks').textContent = looks.length
       }
    },
 
    async quickGenerate() {
-      const btn = document.getElementById('quick-btn')
+      const btn     = document.getElementById('quick-btn')
+      const btnText = document.getElementById('quick-btn-text')
 
-      btn.disabled     = true
-      btn.querySelector('span').textContent = 'Gerando...'
+      btn.disabled    = true
+      btnText.textContent = 'Gerando...'
 
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/looks/generate`, {
-            method:  'POST',
-            headers: Auth.getHeaders(),
-            body:    JSON.stringify({ mode: this.autoMode })
-         })
+      const response = await API.post('/looks/generate', { mode: this.autoMode })
 
-         if (!response.ok) {
-            const err = await response.json()
-            throw new Error(err.detail || 'Erro ao gerar look')
-         }
+      if (!response) return
 
-         this.currentLook = await response.json()
-         this.renderLook(this.currentLook)
-
-      } catch (e) {
+      if (!response.ok) {
+         const err       = await response.json()
          const container = document.getElementById('home-look')
          container.innerHTML = `
             <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
-               ${e.message}
+               ${err.detail || 'Erro ao gerar look'}
             </p>
          `
          container.classList.remove('hidden')
-      } finally {
-         btn.disabled = false
-         btn.querySelector('span').textContent = 'Me ajuda a me vestir'
+      } else {
+         this.currentLook = await response.json()
+         this.renderLook(this.currentLook)
       }
+
+      btn.disabled        = false
+      btnText.textContent = 'Me ajuda a me vestir'
    },
 
    renderLook(look) {
@@ -140,7 +129,6 @@ const HomePage = {
       `
 
       container.classList.remove('hidden')
-
       document.getElementById('home-btn-again').addEventListener('click', () => this.quickGenerate())
       document.getElementById('home-btn-save').addEventListener('click', () => this.saveLook(look.id))
    },
@@ -150,16 +138,11 @@ const HomePage = {
       btn.disabled    = true
       btn.textContent = 'Salvando...'
 
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/looks/${lookId}/save`, {
-            method:  'PATCH',
-            headers: Auth.getHeaders()
-         })
+      const response = await API.patch(`/looks/${lookId}/save`)
 
-         if (!response.ok) throw new Error()
+      if (response?.ok) {
          btn.textContent = 'Salvo!'
-
-      } catch (e) {
+      } else {
          btn.disabled    = false
          btn.textContent = 'Salvar'
       }

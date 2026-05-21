@@ -10,8 +10,8 @@ const AIPage = {
             </div>
             <div class="chat-messages" id="chat-messages">
                <div class="chat-bubble ai">
-                     Oi! Sou a Dora, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
-                  </div>
+                  Oi! Sou a Dora, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
+               </div>
             </div>
          </div>
          <div class="chat-input-area">
@@ -33,7 +33,6 @@ const AIPage = {
       const sendBtn = document.getElementById('chat-send')
 
       sendBtn.addEventListener('click', () => this.send())
-
       input.addEventListener('keydown', (e) => {
          if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault()
@@ -49,40 +48,31 @@ const AIPage = {
 
       if (!message) return
 
-      input.value       = ''
-      sendBtn.disabled  = true
+      input.value      = ''
+      sendBtn.disabled = true
 
       this.addBubble('user', message)
       const loadingId = this.addBubble('ai', 'Pensando...', true)
 
       this.history.push({ role: 'user', content: message })
 
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/ai/chat`, {
-            method:  'POST',
-            headers: Auth.getHeaders(),
-            body:    JSON.stringify({
-               message,
-               history: this.history.slice(-10)
-            })
-         })
+      const response = await API.post('/ai/chat', {
+         message,
+         history: this.history.slice(-10)
+      })
 
-         if (!response.ok) throw new Error()
+      this.removeBubble(loadingId)
 
-         const data = await response.json()
-
-         this.removeBubble(loadingId)
+      if (response?.ok) {
+         const data  = await response.json()
          this.addBubble('ai', data.reply)
-
          this.history.push({ role: 'assistant', content: data.reply })
-
-      } catch (e) {
-         this.removeBubble(loadingId)
+      } else if (response) {
          this.addBubble('ai', 'Tive um problema aqui. Pode repetir?')
-      } finally {
-         sendBtn.disabled = false
-         input.focus()
       }
+
+      sendBtn.disabled = false
+      input.focus()
    },
 
    addBubble(role, content, isLoading = false) {

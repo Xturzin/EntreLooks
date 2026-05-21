@@ -38,7 +38,6 @@ const LooksPage = {
       })
 
       document.getElementById('generate-btn').addEventListener('click', () => this.generate())
-
       await this.loadSavedLooks()
    },
 
@@ -50,28 +49,22 @@ const LooksPage = {
       btn.textContent = 'Gerando...'
       result.classList.add('hidden')
 
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/looks/generate`, {
-            method:  'POST',
-            headers: Auth.getHeaders(),
-            body:    JSON.stringify({ mode: this.activeMode })
-         })
+      const response = await API.post('/looks/generate', { mode: this.activeMode })
 
-         if (!response.ok) {
-            const err = await response.json()
-            throw new Error(err.detail || 'Erro ao gerar look')
-         }
+      btn.disabled    = false
+      btn.textContent = 'Gerar look'
 
-         this.currentLook = await response.json()
-         this.renderLook(this.currentLook)
+      if (!response) return
 
-      } catch (e) {
-         result.innerHTML = `<p class="look-error">${e.message}</p>`
+      if (!response.ok) {
+         const err        = await response.json()
+         result.innerHTML = `<p class="look-error">${err.detail || 'Erro ao gerar look'}</p>`
          result.classList.remove('hidden')
-      } finally {
-         btn.disabled    = false
-         btn.textContent = 'Gerar look'
+         return
       }
+
+      this.currentLook = await response.json()
+      this.renderLook(this.currentLook)
    },
 
    renderLook(look) {
@@ -99,7 +92,6 @@ const LooksPage = {
       `
 
       result.classList.remove('hidden')
-
       document.getElementById('btn-again').addEventListener('click', () => this.generate())
       document.getElementById('btn-save').addEventListener('click', () => this.saveLook(look.id))
    },
@@ -109,34 +101,22 @@ const LooksPage = {
       btn.disabled    = true
       btn.textContent = 'Salvando...'
 
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/looks/${lookId}/save`, {
-            method:  'PATCH',
-            headers: Auth.getHeaders()
-         })
+      const response = await API.patch(`/looks/${lookId}/save`)
 
-         if (!response.ok) throw new Error()
-
+      if (response?.ok) {
          btn.textContent = 'Salvo!'
          await this.loadSavedLooks()
-
-      } catch (e) {
+      } else {
          btn.disabled    = false
          btn.textContent = 'Salvar look'
       }
    },
 
    async loadSavedLooks() {
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/looks/`, {
-            headers: Auth.getHeaders()
-         })
-         if (!response.ok) throw new Error()
-         const looks = await response.json()
-         this.renderSavedLooks(looks)
-      } catch (e) {
-         // silent fail
-      }
+      const response = await API.get('/looks/')
+      if (!response?.ok) return
+
+      this.renderSavedLooks(await response.json())
    },
 
    renderSavedLooks(looks) {

@@ -1,34 +1,25 @@
-// mapa simples de nomes de cor para hex
 const COLOR_MAP = {
-   preto:      "#1C1C1E",
-   branco:     "#F5F5F5",
-   cinza:      "#8E8E93",
-   azul:       "#007AFF",
-   vermelho:   "#FF3B30",
-   verde:      "#34C759",
-   amarelo:    "#FFD60A",
-   laranja:    "#FF9500",
-   rosa:       "#FF2D55",
-   roxo:       "#AF52DE",
-   marrom:     "#A2845E",
-   bege:       "#E8D5B7",
-   vinho:      "#7B1C2A",
-   navy:       "#1B2A4A",
-   caramelo:   "#C19A6B",
+   preto:    "#1C1C1E", branco:   "#F5F5F5", cinza:    "#8E8E93",
+   azul:     "#007AFF", vermelho: "#FF3B30", verde:    "#34C759",
+   amarelo:  "#FFD60A", laranja:  "#FF9500", rosa:     "#FF2D55",
+   roxo:     "#AF52DE", marrom:   "#A2845E", bege:     "#E8D5B7",
+   vinho:    "#7B1C2A", navy:     "#1B2A4A", caramelo: "#C19A6B",
 }
 
 function colorHex(name) {
-   const key = (name || "").toLowerCase().trim()
-   return COLOR_MAP[key] || "#CCCCCC"
+   return COLOR_MAP[(name || "").toLowerCase().trim()] || "#CCCCCC"
 }
 
 const StylePage = {
    render() {
       return `
          <div class="page style-page">
-            <div class="page-header">
-               <h1 class="page-title">Meu Estilo</h1>
-               <p class="page-subtitle">Seu DNA visual</p>
+            <div class="page-header style-header">
+               <div>
+                  <h1 class="page-title">Meu Estilo</h1>
+                  <p class="page-subtitle">Seu DNA visual</p>
+               </div>
+               <button class="logout-btn" id="logout-btn">Sair</button>
             </div>
             <div id="style-content">
                <p style="color: var(--text-muted); font-size: var(--text-sm);">Carregando...</p>
@@ -38,21 +29,21 @@ const StylePage = {
    },
 
    async init() {
+      document.getElementById('logout-btn').addEventListener('click', () => logout())
       await this.load()
    },
 
    async load() {
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/style/`, {
-            headers: Auth.getHeaders()
-         })
-         if (!response.ok) throw new Error()
-         const data = await response.json()
-         this.renderProfile(data)
-      } catch (e) {
+      const response = await API.get('/style/')
+      if (!response) return
+
+      if (!response.ok) {
          document.getElementById('style-content').innerHTML =
             `<p style="color: var(--text-muted); font-size: var(--text-sm);">Erro ao carregar perfil.</p>`
+         return
       }
+
+      this.renderProfile(await response.json())
    },
 
    renderProfile(data) {
@@ -85,7 +76,7 @@ const StylePage = {
                <div class="stat-label">peças no armário</div>
             </div>
             <div class="stat-card">
-               <div class="stat-number">${data.top_styles.length > 0 ? data.top_styles[0].name : '-'}</div>
+               <div class="stat-number">${data.top_styles[0]?.name || '-'}</div>
                <div class="stat-label">estilo predominante</div>
             </div>
          </div>
@@ -114,7 +105,7 @@ const StylePage = {
                <div class="tag-list">
                   ${data.top_styles.map(s => `
                      <span class="style-tag">
-                        ${s.name} <span class="tag-pct">${s.percentage}%</span>
+                        ${s.name}<span class="tag-pct">${s.percentage}%</span>
                      </span>
                   `).join('')}
                </div>
@@ -127,7 +118,7 @@ const StylePage = {
                <div class="tag-list">
                   ${data.top_types.map(t => `
                      <span class="style-tag">
-                        ${t.name} <span class="tag-pct">${t.count}</span>
+                        ${t.name}<span class="tag-pct">${t.count}</span>
                      </span>
                   `).join('')}
                </div>
@@ -147,17 +138,15 @@ const StylePage = {
       btn.disabled    = true
       btn.textContent = 'Analisando...'
 
-      try {
-         const response = await fetch(`${CONFIG.API_URL}/style/generate`, {
-            method:  'POST',
-            headers: Auth.getHeaders()
-         })
-         if (!response.ok) throw new Error()
-         const data = await response.json()
-         this.renderProfile(data)
-      } catch (e) {
+      const response = await API.post('/style/generate', {})
+      if (!response) return
+
+      if (!response.ok) {
          btn.disabled    = false
          btn.textContent = 'Tentar novamente'
+         return
       }
+
+      this.renderProfile(await response.json())
    }
 }
