@@ -5,5 +5,5 @@ supabase
 httpx
 Pillow
 openai
-rembg
+rembg[cpu]
 python-multipart
