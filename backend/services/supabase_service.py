@@ -2,6 +2,9 @@ import httpx
 from supabase import create_client, Client
 from config.settings import settings
 
+if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+   raise RuntimeError("SUPABASE_URL e SUPABASE_KEY são obrigatórios")
+
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 async def sign_up_user(email: str, password: str):
