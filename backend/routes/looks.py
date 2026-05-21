@@ -16,6 +16,7 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
       supabase.table("clothes")
       .select("*")
       .eq("user_id", user.id)
+      .limit(30)
       .execute()
    )
    clothes = clothes_result.data

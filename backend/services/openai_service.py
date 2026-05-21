@@ -35,7 +35,11 @@ async def categorize_clothing(image_base64: str) -> dict:
 
    content = response.choices[0].message.content.strip()
    content = content.replace("```json", "").replace("```", "").strip()
-   return json.loads(content)
+
+   try:
+      return json.loads(content)
+   except json.JSONDecodeError:
+      raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
 
 async def generate_look_ai(clothes: list, mode: str) -> list:
    clothes_data = [
@@ -71,7 +75,11 @@ Formato obrigatório:
 
    content = response.choices[0].message.content.strip()
    content = content.replace("```json", "").replace("```", "").strip()
-   result  = json.loads(content)
+
+   try:
+      return json.loads(content)
+   except json.JSONDecodeError:
+      raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
    return result.get("clothes_ids", [])
 
 async def chat_with_stylist(message: str, history: list, clothes: list) -> str:

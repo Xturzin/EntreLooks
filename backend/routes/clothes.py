@@ -7,12 +7,20 @@ from services.supabase_service import supabase
 
 router = APIRouter(prefix="/clothes", tags=["clothes"])
 
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
 @router.post("/")
 async def upload_clothing(
    file: UploadFile = File(...),
    user=Depends(get_current_user)
 ):
+   if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/heic"):
+      raise HTTPException(status_code=400, detail="Formato inválido. Use JPG, PNG ou WEBP.")
+
    image_bytes = await file.read()
+
+   if len(image_bytes) > MAX_FILE_SIZE:
+      raise HTTPException(status_code=400, detail="Imagem muito grande. Máximo 10MB.")
 
    # remove fundo (retorna original se rembg indisponível)
    processed = remove_background(image_bytes)
