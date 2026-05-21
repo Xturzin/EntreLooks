@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.openai_service import generate_look_ai
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/looks", tags=["looks"])
 
@@ -66,7 +67,36 @@ async def save_look(look_id: str, user=Depends(get_current_user)):
    if not result.data:
       raise HTTPException(status_code=404, detail="Look não encontrado")
 
+   # registra uso das peças do look
+   clothes_ids = result.data[0].get("clothes_ids", [])
+   await _track_wear(clothes_ids, user.id)
+
    return {"saved": True}
+
+async def _track_wear(clothes_ids: list, user_id: str):
+   if not clothes_ids:
+      return
+
+   now = datetime.now(timezone.utc).isoformat()
+
+   try:
+      worn = (
+         supabase.table("clothes")
+         .select("id, wear_count")
+         .in_("id", clothes_ids)
+         .eq("user_id", user_id)
+         .execute()
+      )
+
+      for cloth in worn.data:
+         new_count = (cloth.get("wear_count") or 0) + 1
+         supabase.table("clothes").update({
+            "wear_count":   new_count,
+            "last_worn_at": now
+         }).eq("id", cloth["id"]).execute()
+
+   except Exception:
+      pass  # não bloqueia o salvamento do look se falhar
 
 @router.get("/")
 async def list_saved_looks(user=Depends(get_current_user)):

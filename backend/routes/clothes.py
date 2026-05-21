@@ -57,6 +57,35 @@ async def upload_clothing(
    result = supabase.table("clothes").insert(cloth).execute()
    return result.data[0]
 
+@router.get("/stats")
+async def wardrobe_stats(user=Depends(get_current_user)):
+   result = (
+      supabase.table("clothes")
+      .select("id, type, color, image_url, wear_count, last_worn_at")
+      .eq("user_id", user.id)
+      .execute()
+   )
+   clothes = result.data
+
+   if not clothes:
+      return {
+         "total":            0,
+         "most_worn":        [],
+         "never_worn":       [],
+         "never_worn_count": 0
+      }
+
+   never_worn  = [c for c in clothes if not c.get("wear_count")]
+   used        = [c for c in clothes if c.get("wear_count")]
+   most_worn   = sorted(used, key=lambda c: c["wear_count"], reverse=True)[:4]
+
+   return {
+      "total":            len(clothes),
+      "most_worn":        most_worn,
+      "never_worn":       never_worn[:4],
+      "never_worn_count": len(never_worn)
+   }
+
 @router.get("/")
 async def list_clothes(user=Depends(get_current_user)):
    result = (

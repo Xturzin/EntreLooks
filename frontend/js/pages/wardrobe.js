@@ -11,6 +11,8 @@ const WardrobePage = {
                <p class="page-subtitle">Suas roupas</p>
             </div>
 
+            <div id="wardrobe-stats"></div>
+
             <div class="upload-area">
                <input type="file" id="cloth-input" accept="image/*" class="hidden">
                <button class="upload-trigger" id="upload-trigger">
@@ -41,7 +43,7 @@ const WardrobePage = {
       this.selectedFile = null
       this.activeFilter = 'all'
       this.bindUploadEvents()
-      await this.loadClothes()
+      await Promise.all([this.loadStats(), this.loadClothes()])
    },
 
    bindUploadEvents() {
