@@ -46,6 +46,57 @@ const WardrobePage = {
       await Promise.all([this.loadStats(), this.loadClothes()])
    },
 
+async loadStats() {
+      const response = await API.get('/clothes/stats')
+      if (!response?.ok) return
+
+      const data      = await response.json()
+      const container = document.getElementById('wardrobe-stats')
+
+      if (data.total === 0) return
+
+      const mostWornBlock = data.most_worn.length > 0 ? `
+         <p class="wardrobe-stats-title">Mais usadas</p>
+         <div class="mini-grid">
+            ${data.most_worn.map(c => `
+               <div class="mini-card">
+                  <img src="${c.image_url}" alt="${c.type || ''}">
+                  <div class="mini-card-badge">${c.wear_count}x</div>
+               </div>
+            `).join('')}
+         </div>
+      ` : ''
+
+      const neverWornBlock = data.never_worn.length > 0 ? `
+         <p class="wardrobe-stats-title">Esquecidas (${data.never_worn_count})</p>
+         <div class="mini-grid">
+            ${data.never_worn.map(c => `
+               <div class="mini-card">
+                  <img src="${c.image_url}" alt="${c.type || ''}">
+               </div>
+            `).join('')}
+         </div>
+      ` : ''
+
+      container.innerHTML = `
+         <div class="wardrobe-stats">
+            <div class="stats-summary">
+               <div class="stats-card">
+                  <div class="stats-card-number">${data.total}</div>
+                  <div class="stats-card-label">peças</div>
+               </div>
+               <div class="stats-card">
+                  <div class="stats-card-number">${data.never_worn_count}</div>
+                  <div class="stats-card-label">esquecidas</div>
+               </div>
+            </div>
+            ${mostWornBlock}
+            ${neverWornBlock}
+         </div>
+         ${data.total > 0 ? '<div class="wardrobe-divider"></div>' : ''}
+      `
+   },
+
    bindUploadEvents() {
       const input = document.getElementById('cloth-input')
       document.getElementById('upload-trigger').addEventListener('click', () => input.click())
