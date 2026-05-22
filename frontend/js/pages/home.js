@@ -191,15 +191,24 @@ const HomePage = {
                `).join('')}
             </div>
             <div class="home-look-actions">
-               <button class="btn-secondary" id="home-btn-again">Gerar outro</button>
+               <button class="btn-reject" id="home-btn-reject">Não gostei</button>
                <button class="btn-primary" id="home-btn-save">Salvar</button>
             </div>
          </div>
       `
 
       container.classList.remove('hidden')
-      document.getElementById('home-btn-again').addEventListener('click', () => this.quickGenerate())
+      document.getElementById('home-btn-reject').addEventListener('click', () => this.rejectLook(look.id))
       document.getElementById('home-btn-save').addEventListener('click', () => this.saveLook(look.id))
+   },
+
+   async rejectLook(lookId) {
+      const btn = document.getElementById('home-btn-reject')
+      btn.disabled    = true
+      btn.textContent = 'Ok...'
+
+      await API.post(`/looks/${lookId}/reject`, {})
+      await this.quickGenerate()
    },
 
    async saveLook(lookId) {

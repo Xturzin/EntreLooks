@@ -91,6 +91,23 @@
    padding: var(--space-md);
 }
 
+.btn-reject {
+   width: 100%;
+   padding: 14px;
+   background: var(--bg);
+   color: #C53030;
+   border: 1px solid #FEB2B2;
+   border-radius: var(--radius-sm);
+   font-size: var(--text-base);
+   font-weight: 500;
+   font-family: var(--font);
+   transition: background 0.2s;
+}
+
+.btn-reject:disabled {
+   opacity: 0.5;
+}
+
 .look-error {
    text-align: center;
    font-size: var(--text-sm);

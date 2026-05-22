@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime, timezone
 from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.openai_service import generate_look_ai
@@ -14,7 +16,6 @@ class GenerateLookRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user)):
-   # busca roupas do usuário
    clothes_result = (
       supabase.table("clothes")
       .select("*")
@@ -30,10 +31,12 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
          detail="Adicione pelo menos 2 peças ao armário para gerar um look"
       )
 
-   # gera look com IA
+   # busca contexto de rejeições para aprendizado
+   rejected_context = await _get_rejection_context(user.id)
+
    try:
-      clothes_ids = await generate_look_ai(clothes, data.mode, data.weather)
-   except Exception as e:
+      clothes_ids = await generate_look_ai(clothes, data.mode, data.weather, rejected_context)
+   except Exception:
       raise HTTPException(status_code=500, detail="Erro ao gerar o look. Tente novamente.")
 
    if not clothes_ids:
@@ -56,6 +59,51 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
 
    return look_data
 
+async def _get_rejection_context(user_id: str) -> list:
+   try:
+      rejections = (
+         supabase.table("look_interactions")
+         .select("look_id")
+         .eq("user_id", user_id)
+         .eq("action", "rejected")
+         .order("created_at", desc=True)
+         .limit(8)
+         .execute()
+      )
+
+      if not rejections.data:
+         return []
+
+      rejected_ids = [r["look_id"] for r in rejections.data]
+
+      rejected_looks = (
+         supabase.table("looks")
+         .select("clothes_ids")
+         .in_("id", rejected_ids)
+         .execute()
+      )
+
+      all_cloth_ids = list({
+         cid
+         for look in rejected_looks.data
+         for cid in look.get("clothes_ids", [])
+      })
+
+      if not all_cloth_ids:
+         return []
+
+      rejected_clothes = (
+         supabase.table("clothes")
+         .select("type, color, style")
+         .in_("id", all_cloth_ids[:20])
+         .execute()
+      )
+
+      return rejected_clothes.data
+
+   except Exception:
+      return []
+
 @router.patch("/{look_id}/save")
 async def save_look(look_id: str, user=Depends(get_current_user)):
    result = (
@@ -69,11 +117,32 @@ async def save_look(look_id: str, user=Depends(get_current_user)):
    if not result.data:
       raise HTTPException(status_code=404, detail="Look não encontrado")
 
-   # registra uso das peças do look
    clothes_ids = result.data[0].get("clothes_ids", [])
    await _track_wear(clothes_ids, user.id)
 
+   try:
+      supabase.table("look_interactions").insert({
+         "user_id": user.id,
+         "look_id": look_id,
+         "action":  "accepted"
+      }).execute()
+   except Exception:
+      pass
+
    return {"saved": True}
+
+@router.post("/{look_id}/reject")
+async def reject_look(look_id: str, user=Depends(get_current_user)):
+   try:
+      supabase.table("look_interactions").insert({
+         "user_id": user.id,
+         "look_id": look_id,
+         "action":  "rejected"
+      }).execute()
+   except Exception:
+      pass
+
+   return {"rejected": True}
 
 async def _track_wear(clothes_ids: list, user_id: str):
    if not clothes_ids:
