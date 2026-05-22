@@ -25,10 +25,30 @@ function showAuthPage() {
    document.getElementById('app').classList.add('hidden')
 }
 
-function showApp() {
+async function showApp() {
    document.getElementById('auth-view').classList.add('hidden')
    document.getElementById('app').classList.remove('hidden')
+
+   if (!localStorage.getItem('el_onboarded')) {
+      const response = await API.get('/clothes/')
+      const clothes  = response?.ok ? await response.json() : []
+
+      if (clothes.length === 0) {
+         showOnboarding()
+         return
+      }
+
+      localStorage.setItem('el_onboarded', 'true')
+   }
+
    navigate('home')
+}
+
+function showOnboarding() {
+   const wrapper     = document.createElement('div')
+   wrapper.innerHTML = OnboardingPage.render()
+   document.body.appendChild(wrapper.firstElementChild)
+   OnboardingPage.init()
 }
 
 function logout() {
