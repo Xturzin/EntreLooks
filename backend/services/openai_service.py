@@ -41,7 +41,7 @@ async def categorize_clothing(image_base64: str) -> dict:
    except json.JSONDecodeError:
       raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
 
-async def generate_look_ai(clothes: list, mode: str) -> list:
+async def generate_look_ai(clothes: list, mode: str, weather: dict = None) -> list:
    clothes_data = [
       {
          "id":       c["id"],
@@ -53,7 +53,13 @@ async def generate_look_ai(clothes: list, mode: str) -> list:
       for c in clothes
    ]
 
-   prompt = f"""Você é uma estilista pessoal. Monte um look {mode} usando as peças abaixo.
+   weather_context = ""
+   if weather:
+      temp = weather.get("temperature", "")
+      desc = weather.get("description", "")
+      weather_context = f"\nClima atual: {desc}, {temp}°C. Adapte o look para esse clima."
+
+   prompt = f"""Você é uma estilista pessoal. Monte um look {mode} usando as peças abaixo.{weather_context}
 
 Peças disponíveis:
 {json.dumps(clothes_data, ensure_ascii=False, indent=2)}

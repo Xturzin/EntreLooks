@@ -1,6 +1,31 @@
+const WEATHER_CODES = {
+   0:  { label: 'Sol aberto',         icon: '☀️' },
+   1:  { label: 'Quase limpo',         icon: '🌤️' },
+   2:  { label: 'Parcialmente nublado',icon: '⛅' },
+   3:  { label: 'Nublado',            icon: '☁️' },
+   45: { label: 'Neblina',            icon: '🌫️' },
+   48: { label: 'Neblina',            icon: '🌫️' },
+   51: { label: 'Garoa leve',         icon: '🌦️' },
+   61: { label: 'Chuva leve',         icon: '🌧️' },
+   63: { label: 'Chuva moderada',     icon: '🌧️' },
+   65: { label: 'Chuva forte',        icon: '🌧️' },
+   80: { label: 'Chuva rápida',       icon: '🌦️' },
+   81: { label: 'Chuva moderada',     icon: '🌧️' },
+   82: { label: 'Chuva intensa',      icon: '⛈️' },
+   95: { label: 'Tempestade',         icon: '⛈️' },
+}
+
+function getWeatherInfo(code) {
+   if (WEATHER_CODES[code]) return WEATHER_CODES[code]
+   if (code >= 71 && code <= 77) return { label: 'Neve', icon: '❄️' }
+   if (code >= 85 && code <= 86) return { label: 'Neve forte', icon: '❄️' }
+   return { label: 'Tempo variado', icon: '🌡️' }
+}
+
 const HomePage = {
    currentLook: null,
    autoMode:    'casual',
+   weather:     null,
 
    render() {
       return `
@@ -9,6 +34,8 @@ const HomePage = {
                <p class="home-greeting-label" id="greeting-label"></p>
                <h1 class="home-greeting-title">O que vamos vestir?</h1>
             </div>
+
+            <div id="weather-widget" class="weather-loading"></div>
 
             <button class="quick-btn" id="quick-btn">
                <span id="quick-btn-text">Me ajuda a me vestir</span>
@@ -33,12 +60,51 @@ const HomePage = {
 
    init() {
       this.currentLook = null
+      this.weather     = null
       this.setupGreeting()
       this.loadStats()
+      this.loadWeather()
 
       document.getElementById('quick-btn').addEventListener('click', () => this.quickGenerate())
       document.getElementById('stat-wardrobe').addEventListener('click', () => navigate('wardrobe'))
       document.getElementById('stat-looks-card').addEventListener('click', () => navigate('looks'))
+   },
+
+   async loadWeather() {
+      const widget = document.getElementById('weather-widget')
+
+      if (!navigator.geolocation) return
+
+      navigator.geolocation.getCurrentPosition(
+         async (pos) => {
+            try {
+               const { latitude: lat, longitude: lon } = pos.coords
+
+               const res  = await fetch(
+                  `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`
+               )
+               const data = await res.json()
+               const temp = Math.round(data.current.temperature_2m)
+               const code = data.current.weathercode
+               const info = getWeatherInfo(code)
+
+               this.weather = { temperature: temp, description: info.label }
+
+               widget.className = 'weather-widget'
+               widget.innerHTML = `
+                  <span>${info.icon}</span>
+                  <span class="weather-temp">${temp}°C</span>
+                  <span>${info.label}</span>
+               `
+            } catch (e) {
+               widget.innerHTML = ''
+            }
+         },
+         () => {
+            // usuário negou localização, ignora silenciosamente
+            widget.innerHTML = ''
+         }
+      )
    },
 
    setupGreeting() {
@@ -85,7 +151,10 @@ const HomePage = {
       btn.disabled    = true
       btnText.textContent = 'Gerando...'
 
-      const response = await API.post('/looks/generate', { mode: this.autoMode })
+      const payload = { mode: this.autoMode }
+      if (this.weather) payload.weather = this.weather
+
+      const response = await API.post('/looks/generate', payload)
 
       if (!response) return
 

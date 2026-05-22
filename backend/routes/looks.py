@@ -4,11 +4,13 @@ from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.openai_service import generate_look_ai
 from datetime import datetime, timezone
+from typing import Optional
 
 router = APIRouter(prefix="/looks", tags=["looks"])
 
 class GenerateLookRequest(BaseModel):
-   mode: str = "casual"
+   mode:    str            = "casual"
+   weather: Optional[dict] = None
 
 @router.post("/generate")
 async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user)):
@@ -30,7 +32,7 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
 
    # gera look com IA
    try:
-      clothes_ids = await generate_look_ai(clothes, data.mode)
+      clothes_ids = await generate_look_ai(clothes, data.mode, data.weather)
    except Exception as e:
       raise HTTPException(status_code=500, detail="Erro ao gerar o look. Tente novamente.")
 

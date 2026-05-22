@@ -122,3 +122,30 @@
    color: var(--text-muted);
    margin-top: 2px;
 }
+
+/* widget de clima */
+.weather-widget {
+   display: flex;
+   align-items: center;
+   gap: var(--space-sm);
+   padding: var(--space-sm) var(--space-md);
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-full);
+   margin-bottom: var(--space-md);
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+   width: fit-content;
+}
+
+.weather-temp {
+   font-weight: 700;
+   color: var(--text);
+}
+
+.weather-loading {
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+   margin-bottom: var(--space-md);
+   height: 36px;
+}
