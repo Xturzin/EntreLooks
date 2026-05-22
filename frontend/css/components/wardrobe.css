@@ -104,6 +104,11 @@
    border-radius: var(--radius-md);
    overflow: hidden;
    border: 1px solid var(--border);
+   box-shadow: var(--shadow-xs);
+}
+
+.cloth-card:active {
+   box-shadow: none;
 }
 
 .cloth-card img {
@@ -244,4 +249,11 @@
    height: 1px;
    background: var(--border);
    margin: var(--space-lg) 0;
+}
+
+/* skeleton card */
+.skeleton-card {
+   border-radius: var(--radius-md);
+   overflow: hidden;
+   border: 1px solid var(--border);
 }

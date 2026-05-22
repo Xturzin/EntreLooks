@@ -45,14 +45,14 @@ const LooksPage = {
       const btn    = document.getElementById('generate-btn')
       const result = document.getElementById('look-result')
 
-      btn.disabled    = true
-      btn.textContent = 'Gerando...'
+      btn.disabled = true
+      startMsgRotation('generate-btn')
       result.classList.add('hidden')
 
       const response = await API.post('/looks/generate', { mode: this.activeMode })
 
-      btn.disabled    = false
-      btn.textContent = 'Gerar look'
+      btn.disabled = false
+      stopMsgRotation('generate-btn', 'Gerar look')
 
       if (!response) return
 
@@ -114,10 +114,12 @@ const LooksPage = {
 
       if (response?.ok) {
          btn.textContent = 'Salvo!'
+         showToast('Look salvo')
          await this.loadSavedLooks()
       } else {
          btn.disabled    = false
          btn.textContent = 'Salvar look'
+         showToast('Erro ao salvar', 'error')
       }
    },
 
@@ -132,7 +134,12 @@ const LooksPage = {
       const container = document.getElementById('saved-looks')
 
       if (!looks || looks.length === 0) {
-         container.innerHTML = ''
+         container.innerHTML = `
+            <div class="empty-state" style="grid-column:unset;margin-top:var(--space-xl)">
+               <p>Nenhum look salvo ainda</p>
+               <span>Gere um look acima e salve os que você mais gostar</span>
+            </div>
+         `
          return
       }
 

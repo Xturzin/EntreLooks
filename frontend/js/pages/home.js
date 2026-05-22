@@ -145,11 +145,10 @@ const HomePage = {
    },
 
    async quickGenerate() {
-      const btn     = document.getElementById('quick-btn')
-      const btnText = document.getElementById('quick-btn-text')
+      const btn = document.getElementById('quick-btn')
 
-      btn.disabled    = true
-      btnText.textContent = 'Gerando...'
+      btn.disabled = true
+      startMsgRotation('quick-btn-text')
 
       const payload = { mode: this.autoMode }
       if (this.weather) payload.weather = this.weather
@@ -172,8 +171,8 @@ const HomePage = {
          this.renderLook(this.currentLook)
       }
 
-      btn.disabled        = false
-      btnText.textContent = 'Me ajuda a me vestir'
+      btn.disabled = false
+      stopMsgRotation('quick-btn-text', 'Me ajuda a me vestir')
    },
 
    renderLook(look) {
@@ -220,9 +219,11 @@ const HomePage = {
 
       if (response?.ok) {
          btn.textContent = 'Salvo!'
+         showToast('Look salvo com sucesso')
       } else {
          btn.disabled    = false
          btn.textContent = 'Salvar'
+         showToast('Erro ao salvar o look', 'error')
       }
    }
 }

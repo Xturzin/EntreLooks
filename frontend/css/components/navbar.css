@@ -34,3 +34,13 @@
 .tab-item.active {
    color: var(--tab-active);
 }
+
+.tab-item.active::after {
+   content: '';
+   display: block;
+   width: 4px;
+   height: 4px;
+   border-radius: 50%;
+   background: var(--primary);
+   margin: 2px auto 0;
+}

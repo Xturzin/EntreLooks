@@ -149,6 +149,7 @@ async loadStats() {
          const cloth        = await response.json()
          status.className   = 'upload-status success'
          status.textContent = `"${cloth.type || 'Peça'}" salva no armário!`
+         showToast(`${cloth.type || 'Peça'} adicionada ao armário`)
          this.resetUpload()
          await this.loadClothes()
       }
@@ -166,12 +167,27 @@ async loadStats() {
    },
 
    async loadClothes() {
+      this.renderSkeletonGrid()
+
       const response = await API.get('/clothes/')
       if (!response) return
 
       this.clothes = response.ok ? await response.json() : []
       this.renderFilters()
       this.renderGrid(this.clothes)
+   },
+
+   renderSkeletonGrid() {
+      const grid = document.getElementById('clothes-grid')
+      grid.innerHTML = Array(6).fill(0).map(() => `
+         <div class="skeleton-card">
+            <div class="skeleton" style="width:100%;aspect-ratio:3/4"></div>
+            <div style="padding:var(--space-sm)">
+               <div class="skeleton" style="height:13px;width:55%;margin-bottom:6px"></div>
+               <div class="skeleton" style="height:11px;width:35%"></div>
+            </div>
+         </div>
+      `).join('')
    },
 
    renderFilters() {
@@ -215,8 +231,8 @@ async loadStats() {
       if (clothes.length === 0) {
          grid.innerHTML = `
             <div class="empty-state">
-               <p>Nenhuma roupa aqui ainda</p>
-               <span>Adicione sua primeira peça acima</span>
+               <p>Seu armário está vazio</p>
+               <span>Adicione suas primeiras peças para começar a montar looks</span>
             </div>
          `
          return
