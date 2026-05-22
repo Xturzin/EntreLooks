@@ -61,11 +61,11 @@ async def generate_look_ai(clothes: list, mode: str, weather: dict = None, rejec
 
    rejection_context = ""
    if rejected_context:
-      items = [
+      items = list({
          f"{c.get('type', '')} {c.get('color', '')}".strip()
-         for c in rejected_context[:6]
+         for c in rejected_context[:10]
          if c.get('type')
-      ]
+      })[:6]
       if items:
          rejection_context = f"\nEvite combinar peças similares às que o usuário rejeitou antes: {', '.join(items)}."
 

@@ -134,11 +134,23 @@ async def save_look(look_id: str, user=Depends(get_current_user)):
 @router.post("/{look_id}/reject")
 async def reject_look(look_id: str, user=Depends(get_current_user)):
    try:
-      supabase.table("look_interactions").insert({
-         "user_id": user.id,
-         "look_id": look_id,
-         "action":  "rejected"
-      }).execute()
+      existing = (
+         supabase.table("look_interactions")
+         .select("id")
+         .eq("user_id", user.id)
+         .eq("look_id", look_id)
+         .eq("action", "rejected")
+         .limit(1)
+         .execute()
+      )
+
+      if not existing.data:
+         supabase.table("look_interactions").insert({
+            "user_id": user.id,
+            "look_id": look_id,
+            "action":  "rejected"
+         }).execute()
+
    except Exception:
       pass
 
