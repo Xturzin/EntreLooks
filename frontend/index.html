@@ -3,7 +3,34 @@
 <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-   <title>EntreLooks</title>
+   <title>EntreLooks - Seu guarda-roupa inteligente</title>
+   <meta name="description" content="Organize suas roupas, descubra seu estilo e receba looks completos criados por IA. Seu guarda-roupa, mais inteligente.">
+   <meta name="application-name" content="EntreLooks">
+   <meta name="theme-color" content="#1C1C1E">
+
+   <!-- PWA -->
+   <link rel="manifest" href="/manifest.json">
+
+   <!-- favicon -->
+   <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
+   <link rel="shortcut icon" href="/assets/icons/favicon.svg">
+
+   <!-- Apple / iOS -->
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+   <meta name="apple-mobile-web-app-title" content="EntreLooks">
+   <link rel="apple-touch-icon" href="/assets/icons/favicon.svg">
+
+   <!-- Open Graph -->
+   <meta property="og:type" content="website">
+   <meta property="og:title" content="EntreLooks - Seu guarda-roupa inteligente">
+   <meta property="og:description" content="Organize suas roupas e receba looks completos criados por IA.">
+   <meta property="og:site_name" content="EntreLooks">
+
+   <!-- Twitter Card -->
+   <meta name="twitter:card" content="summary">
+   <meta name="twitter:title" content="EntreLooks">
+   <meta name="twitter:description" content="Seu guarda-roupa inteligente com IA.">
    <link rel="stylesheet" href="css/reset.css">
    <link rel="stylesheet" href="css/variables.css">
    <link rel="stylesheet" href="css/main.css">
@@ -45,9 +72,11 @@
       </nav>
    </div>
 
+   <script defer src="/_vercel/insights/script.js"></script>
    <script src="js/config.js"></script>
    <script src="js/auth.js"></script>
    <script src="js/api.js"></script>
+   <script src="js/analytics.js"></script>
    <script src="js/pages/login.js"></script>
    <script src="js/pages/onboarding.js"></script>
    <script src="js/pages/home.js"></script>

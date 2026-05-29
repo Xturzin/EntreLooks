@@ -70,8 +70,7 @@ const AIPage = {
       const loadingId = this.addBubble('ai', 'Pensando...', true)
       this.history.push({ role: 'user', content: message })
 
-      const controller = new AbortController()
-      const timeout    = setTimeout(() => controller.abort(), 30000)
+      Analytics.aiChatMessage()
 
       try {
          const response = await API.post(

@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# EntreLooks é uma aplicação autenticada, sem conteúdo público para indexar.

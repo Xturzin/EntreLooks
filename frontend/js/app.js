@@ -16,6 +16,10 @@ function navigate(page) {
    document.querySelectorAll('.tab-item').forEach(tab => {
       tab.classList.toggle('active', tab.dataset.page === page)
    })
+
+   // hash routing: permite Vercel distinguir tabs + navegação por URL
+   history.replaceState(null, '', `#${page}`)
+   Analytics.pageView(page)
 }
 
 function showAuthPage() {
@@ -29,6 +33,9 @@ async function showApp() {
    document.getElementById('auth-view').classList.add('hidden')
    document.getElementById('app').classList.remove('hidden')
 
+   // restaura tab da URL se existir
+   const hashPage = window.location.hash.replace('#', '')
+
    if (!localStorage.getItem('el_onboarded')) {
       const response = await API.get('/clothes/')
       const clothes  = response?.ok ? await response.json() : []
@@ -41,7 +48,8 @@ async function showApp() {
       localStorage.setItem('el_onboarded', 'true')
    }
 
-   navigate('home')
+   const targetPage = routes[hashPage] ? hashPage : 'home'
+   navigate(targetPage)
 }
 
 function showOnboarding() {

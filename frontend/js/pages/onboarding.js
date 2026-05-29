@@ -92,7 +92,7 @@ const OnboardingPage = {
 
    init() {
       this.currentSlide = 0
-      document.getElementById('onboarding-skip').addEventListener('click', () => this.finish())
+      document.getElementById('onboarding-skip').addEventListener('click', () => this.finish(true))
       document.getElementById('onboarding-next').addEventListener('click', () => this.next())
    },
 
@@ -123,8 +123,9 @@ const OnboardingPage = {
          : 'Próximo'
    },
 
-   finish() {
+   finish(skipped = false) {
       localStorage.setItem('el_onboarded', 'true')
+      Analytics.onboardingFinished(skipped)
 
       const overlay            = document.getElementById('onboarding-overlay')
       overlay.style.transition = 'opacity 0.3s ease'

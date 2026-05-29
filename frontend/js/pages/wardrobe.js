@@ -150,6 +150,7 @@ async loadStats() {
          status.className   = 'upload-status success'
          status.textContent = `"${cloth.type || 'Peça'}" salva no armário!`
          showToast(`${cloth.type || 'Peça'} adicionada ao armário`)
+         Analytics.uploadCloth()
          this.resetUpload()
          await this.loadClothes()
       }
