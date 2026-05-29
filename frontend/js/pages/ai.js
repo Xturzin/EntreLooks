@@ -72,6 +72,14 @@ const AIPage = {
 
       Analytics.aiChatMessage()
 
+      // limita histórico: mantém apenas os últimos 10 pares (20 mensagens)
+      if (this.history.length > 20) {
+         this.history = this.history.slice(-20)
+      }
+
+      const controller = new AbortController()
+      const timeout    = setTimeout(() => controller.abort(), 30000)
+
       try {
          const response = await API.post(
             '/ai/chat',

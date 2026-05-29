@@ -28,7 +28,9 @@ async def upload_clothing(
    # categoriza com IA
    try:
       categories = await categorize_clothing(to_base64(processed))
-   except Exception:
+   except Exception as e:
+      import logging
+      logging.getLogger("entrelooks").warning(f"Categorização falhou: {type(e).__name__}: {e}")
       categories = {"type": None, "color": None, "style": None, "occasion": None}
 
    # upload para o Supabase Storage

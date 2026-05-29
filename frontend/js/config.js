@@ -1,3 +1,3 @@
 const CONFIG = {
-   API_URL: "entrelooks-production.up.railway.app"
+   API_URL: "https://entrelooks-production.up.railway.app"
 }

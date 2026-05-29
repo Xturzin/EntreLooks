@@ -38,7 +38,11 @@ async function showApp() {
 
    if (!localStorage.getItem('el_onboarded')) {
       const response = await API.get('/clothes/')
-      const clothes  = response?.ok ? await response.json() : []
+
+      // null = token expirado, API.request já redirecionou para login
+      if (!response) return
+
+      const clothes = response.ok ? await response.json() : []
 
       if (clothes.length === 0) {
          showOnboarding()
@@ -61,6 +65,7 @@ function showOnboarding() {
 
 function logout() {
    Auth.clearToken()
+   localStorage.removeItem('el_onboarded')
    showAuthPage()
 }
 

@@ -19,7 +19,7 @@ async def categorize_clothing(image_base64: str) -> dict:
    }"""
 
    response = await client.chat.completions.create(
-      model="llama-3.3-70b-versatile",
+      model="meta-llama/llama-4-scout-17b-16e-instruct",
       messages=[{
          "role": "user",
          "content": [
@@ -93,10 +93,10 @@ Formato obrigatório:
    content = content.replace("```json", "").replace("```", "").strip()
 
    try:
-      return json.loads(content)
-   except json.JSONDecodeError:
+      result = json.loads(content)
+      return result.get("clothes_ids", [])
+   except (json.JSONDecodeError, AttributeError):
       raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
-   return result.get("clothes_ids", [])
 
 async def chat_with_stylist(message: str, history: list, clothes: list) -> str:
    if clothes:
