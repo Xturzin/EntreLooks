@@ -105,6 +105,31 @@
    overflow: hidden;
    border: 1px solid var(--border);
    box-shadow: var(--shadow-xs);
+   position: relative;
+}
+
+.cloth-delete-btn {
+   position: absolute;
+   top: 6px;
+   right: 6px;
+   width: 26px;
+   height: 26px;
+   border-radius: 50%;
+   background: rgba(0, 0, 0, 0.52);
+   color: #fff;
+   border: none;
+   font-size: 16px;
+   line-height: 1;
+   cursor: pointer;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 1;
+   transition: background 0.15s;
+}
+
+.cloth-delete-btn:active {
+   background: rgba(197, 48, 48, 0.85);
 }
 
 .cloth-card:active {

@@ -3,6 +3,7 @@ from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.style_service import analyze_wardrobe
 from services.openai_service import generate_style_summary
+from services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/style", tags=["style"])
 
@@ -31,11 +32,20 @@ async def get_style_profile(user=Depends(get_current_user)):
 
 @router.post("/generate")
 async def generate_profile(user=Depends(get_current_user)):
+   rate_limiter.check(user.id, limit=5, window=3600)  # 5 análises/hora
+
    clothes_result = supabase.table("clothes").select("*").eq("user_id", user.id).execute()
    clothes        = clothes_result.data
 
-   stats   = analyze_wardrobe(clothes)
-   summary = await generate_style_summary(stats, clothes)
+   stats = analyze_wardrobe(clothes)
+
+   try:
+      summary = await generate_style_summary(stats, clothes)
+   except Exception:
+      raise HTTPException(
+         status_code=503,
+         detail="Serviço de IA temporariamente indisponível. Tente em alguns instantes."
+      )
 
    # salva ou atualiza na tabela
    existing = (

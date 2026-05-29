@@ -4,6 +4,7 @@ from dependencies import get_current_user
 from services.image_service import remove_background, to_base64
 from services.openai_service import categorize_clothing
 from services.supabase_service import supabase
+from services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/clothes", tags=["clothes"])
 
@@ -14,6 +15,8 @@ async def upload_clothing(
    file: UploadFile = File(...),
    user=Depends(get_current_user)
 ):
+   rate_limiter.check(user.id, limit=20, window=3600)  # 20 uploads/hora
+
    if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/heic"):
       raise HTTPException(status_code=400, detail="Formato inválido. Use JPG, PNG ou WEBP.")
 
@@ -88,13 +91,41 @@ async def wardrobe_stats(user=Depends(get_current_user)):
       "never_worn_count": len(never_worn)
    }
 
+@router.delete("/{cloth_id}")
+async def delete_clothing(cloth_id: str, user=Depends(get_current_user)):
+   result = (
+      supabase.table("clothes")
+      .select("id")
+      .eq("id", cloth_id)
+      .eq("user_id", user.id)
+      .execute()
+   )
+
+   if not result.data:
+      raise HTTPException(status_code=404, detail="Peça não encontrada")
+
+   # remove imagem do storage (não bloqueia se falhar)
+   try:
+      supabase.storage.from_("clothes").remove([f"{user.id}/{cloth_id}.png"])
+   except Exception:
+      pass
+
+   supabase.table("clothes").delete().eq("id", cloth_id).eq("user_id", user.id).execute()
+
+   return {"deleted": True}
+
 @router.get("/")
-async def list_clothes(user=Depends(get_current_user)):
+async def list_clothes(
+   user=Depends(get_current_user),
+   limit: int = 50,
+   offset: int = 0
+):
    result = (
       supabase.table("clothes")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", desc=True)
+      .range(offset, offset + limit - 1)
       .execute()
    )
    return result.data

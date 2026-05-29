@@ -2,6 +2,10 @@ const WardrobePage = {
    selectedFile:  null,
    clothes:       [],
    activeFilter:  'all',
+   _offset:       0,
+   _limit:        50,
+   _hasMore:      false,
+   _loading:      false,
 
    render() {
       return `
@@ -42,6 +46,9 @@ const WardrobePage = {
    async init() {
       this.selectedFile = null
       this.activeFilter = 'all'
+      this._offset      = 0
+      this._hasMore     = false
+      this.clothes      = []
       this.bindUploadEvents()
       await Promise.all([this.loadStats(), this.loadClothes()])
    },
@@ -125,38 +132,43 @@ async loadStats() {
    async upload() {
       if (!this.selectedFile) return
 
-      const btn    = document.getElementById('upload-submit')
-      const status = document.getElementById('upload-status')
+      const btn     = document.getElementById('upload-submit')
+      const trigger = document.getElementById('upload-trigger')
+      const status  = document.getElementById('upload-status')
 
       btn.disabled       = true
       btn.textContent    = 'Processando...'
+      trigger.disabled   = true
       status.className   = 'upload-status'
       status.textContent = 'Removendo fundo e identificando a peça...'
       status.classList.remove('hidden')
 
-      const formData = new FormData()
-      formData.append('file', this.selectedFile)
+      try {
+         const formData = new FormData()
+         formData.append('file', this.selectedFile)
 
-      const response = await API.post('/clothes/', formData)
+         const response = await API.post('/clothes/', formData)
 
-      if (!response) return
+         if (!response) return
 
-      if (!response.ok) {
-         const err          = await response.json()
-         status.className   = 'upload-status error'
-         status.textContent = err.detail || 'Algo deu errado. Tente de novo.'
-      } else {
-         const cloth        = await response.json()
-         status.className   = 'upload-status success'
-         status.textContent = `"${cloth.type || 'Peça'}" salva no armário!`
-         showToast(`${cloth.type || 'Peça'} adicionada ao armário`)
-         Analytics.uploadCloth()
-         this.resetUpload()
-         await this.loadClothes()
+         if (!response.ok) {
+            const err          = await response.json().catch(() => ({}))
+            status.className   = 'upload-status error'
+            status.textContent = err.detail || 'Algo deu errado. Tente de novo.'
+         } else {
+            const cloth        = await response.json()
+            status.className   = 'upload-status success'
+            status.textContent = `"${cloth.type || 'Peça'}" salva no armário!`
+            showToast(`${cloth.type || 'Peça'} adicionada ao armário`)
+            Analytics.uploadCloth()
+            this.resetUpload()
+            await this.loadClothes()
+         }
+      } finally {
+         btn.disabled     = false
+         btn.textContent  = 'Salvar no armário'
+         trigger.disabled = false
       }
-
-      btn.disabled    = false
-      btn.textContent = 'Salvar no armário'
    },
 
    resetUpload() {
@@ -167,15 +179,34 @@ async loadStats() {
       document.getElementById('upload-submit').textContent = 'Salvar no armário'
    },
 
-   async loadClothes() {
-      this.renderSkeletonGrid()
+   async loadClothes(append = false) {
+      if (this._loading && append) return
+      this._loading = true
 
-      const response = await API.get('/clothes/')
-      if (!response) return
+      if (!append) {
+         this._offset = 0
+         this.clothes = []
+         this.renderSkeletonGrid()
+      }
 
-      this.clothes = response.ok ? await response.json() : []
-      this.renderFilters()
-      this.renderGrid(this.clothes)
+      try {
+         const response = await API.get(`/clothes/?limit=${this._limit}&offset=${this._offset}`)
+         if (!response) return
+
+         const page    = response.ok ? await response.json() : []
+         this._hasMore = page.length === this._limit
+         this.clothes  = append ? [...this.clothes, ...page] : page
+
+         this.renderFilters()
+         this.applyFilter()
+      } finally {
+         this._loading = false
+      }
+   },
+
+   async loadMore() {
+      this._offset += this._limit
+      await this.loadClothes(true)
    },
 
    renderSkeletonGrid() {
@@ -226,6 +257,19 @@ async loadStats() {
       this.renderGrid(filtered)
    },
 
+   async deleteCloth(clothId) {
+      const response = await API.delete(`/clothes/${clothId}`)
+      if (!response?.ok) {
+         showToast('Erro ao remover peça', 'error')
+         return
+      }
+
+      this.clothes = this.clothes.filter(c => c.id !== clothId)
+      this.renderFilters()
+      this.applyFilter()
+      showToast('Peça removida do armário')
+   },
+
    renderGrid(clothes) {
       const grid = document.getElementById('clothes-grid')
 
@@ -239,14 +283,30 @@ async loadStats() {
          return
       }
 
+      const loadMoreBtn = this._hasMore
+         ? `<div class="load-more-wrapper" style="grid-column:1/-1"><button class="btn-secondary" id="load-more-clothes">Carregar mais</button></div>`
+         : ''
+
       grid.innerHTML = clothes.map(cloth => `
          <div class="cloth-card">
             <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
+            <button class="cloth-delete-btn" data-id="${cloth.id}" aria-label="Remover peça">×</button>
             <div class="cloth-info">
                <span class="cloth-type">${cloth.type || 'Peça'}</span>
                ${cloth.color ? `<span class="cloth-color">${cloth.color}</span>` : ''}
             </div>
          </div>
-      `).join('')
+      `).join('') + loadMoreBtn
+
+      grid.querySelectorAll('.cloth-delete-btn').forEach(btn => {
+         btn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this.deleteCloth(btn.dataset.id)
+         })
+      })
+
+      if (this._hasMore) {
+         document.getElementById('load-more-clothes').addEventListener('click', () => this.loadMore())
+      }
    }
 }

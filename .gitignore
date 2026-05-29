@@ -22,3 +22,6 @@ Thumbs.db
 # Build / cache
 dist/
 *.egg-info/
+
+# Claude
+.claude/

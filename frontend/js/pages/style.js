@@ -142,6 +142,8 @@ const StylePage = {
       if (!response) return
 
       if (!response.ok) {
+         const err = await response.json().catch(() => ({}))
+         showToast(err.detail || 'Erro ao gerar análise. Tente novamente.', 'error')
          btn.disabled    = false
          btn.textContent = 'Tentar novamente'
          return

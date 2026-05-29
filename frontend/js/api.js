@@ -38,5 +38,9 @@ const API = {
 
    patch(endpoint) {
       return this.request(endpoint, { method: 'PATCH' })
+   },
+
+   delete(endpoint) {
+      return this.request(endpoint, { method: 'DELETE' })
    }
 }

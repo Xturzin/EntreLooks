@@ -128,19 +128,20 @@ const HomePage = {
    },
 
    async loadStats() {
-      const [clothesRes, looksRes] = await Promise.all([
-         API.get('/clothes/'),
-         API.get('/looks/')
+      const [statsRes, looksRes] = await Promise.all([
+         API.get('/clothes/stats'),
+         API.get('/looks/?limit=100')
       ])
 
-      if (clothesRes?.ok) {
-         const clothes = await clothesRes.json()
-         document.getElementById('stat-clothes').textContent = clothes.length
+      if (statsRes?.ok) {
+         const stats = await statsRes.json()
+         document.getElementById('stat-clothes').textContent = stats.total
       }
 
       if (looksRes?.ok) {
          const looks = await looksRes.json()
-         document.getElementById('stat-looks').textContent = looks.length
+         document.getElementById('stat-looks').textContent =
+            looks.length === 100 ? '99+' : looks.length
       }
    },
 
@@ -150,31 +151,33 @@ const HomePage = {
       btn.disabled = true
       startMsgRotation('quick-btn-text')
 
-      const payload = { mode: this.autoMode }
-      if (this.weather) payload.weather = this.weather
+      try {
+         const payload = { mode: this.autoMode }
+         if (this.weather) payload.weather = this.weather
 
-      Analytics.generateLook(this.autoMode, !!this.weather)
+         Analytics.generateLook(this.autoMode, !!this.weather)
 
-      const response = await API.post('/looks/generate', payload)
+         const response = await API.post('/looks/generate', payload)
 
-      if (!response) return
+         if (!response) return
 
-      if (!response.ok) {
-         const err       = await response.json()
-         const container = document.getElementById('home-look')
-         container.innerHTML = `
-            <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
-               ${err.detail || 'Erro ao gerar look'}
-            </p>
-         `
-         container.classList.remove('hidden')
-      } else {
-         this.currentLook = await response.json()
-         this.renderLook(this.currentLook)
+         if (!response.ok) {
+            const err       = await response.json().catch(() => ({}))
+            const container = document.getElementById('home-look')
+            container.innerHTML = `
+               <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
+                  ${err.detail || 'Erro ao gerar look'}
+               </p>
+            `
+            container.classList.remove('hidden')
+         } else {
+            this.currentLook = await response.json()
+            this.renderLook(this.currentLook)
+         }
+      } finally {
+         btn.disabled = false
+         stopMsgRotation('quick-btn-text', 'Me ajuda a me vestir')
       }
-
-      btn.disabled = false
-      stopMsgRotation('quick-btn-text', 'Me ajuda a me vestir')
    },
 
    renderLook(look) {

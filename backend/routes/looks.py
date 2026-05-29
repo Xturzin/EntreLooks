@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.openai_service import generate_look_ai
-from datetime import datetime, timezone
-from typing import Optional
+from services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/looks", tags=["looks"])
 
@@ -16,6 +15,8 @@ class GenerateLookRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user)):
+   rate_limiter.check(user.id, limit=15, window=3600)  # 15 looks/hora
+
    clothes_result = (
       supabase.table("clothes")
       .select("*")
@@ -182,13 +183,18 @@ async def _track_wear(clothes_ids: list, user_id: str):
       pass  # não bloqueia o salvamento do look se falhar
 
 @router.get("/")
-async def list_saved_looks(user=Depends(get_current_user)):
+async def list_saved_looks(
+   user=Depends(get_current_user),
+   limit: int = 20,
+   offset: int = 0
+):
    looks_result = (
       supabase.table("looks")
       .select("*")
       .eq("user_id", user.id)
       .eq("saved", True)
       .order("created_at", desc=True)
+      .range(offset, offset + limit - 1)
       .execute()
    )
    looks = looks_result.data

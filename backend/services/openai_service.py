@@ -1,4 +1,5 @@
 import json
+import re
 from openai import AsyncOpenAI
 from config.settings import settings
 
@@ -6,6 +7,15 @@ client = AsyncOpenAI(
    api_key=settings.GROQ_API_KEY,
    base_url="https://api.groq.com/openai/v1"
 )
+
+def _extract_json(content: str) -> str:
+   """Remove markdown fences e tenta extrair o objeto JSON caso o modelo adicione texto extra."""
+   content = content.replace("```json", "").replace("```", "").strip()
+   if not content.startswith("{"):
+      match = re.search(r"\{.*\}", content, re.DOTALL)
+      if match:
+         content = match.group(0)
+   return content
 
 async def categorize_clothing(image_base64: str) -> dict:
    prompt = """Analise esta peça de roupa e responda SOMENTE em JSON, sem texto extra.
@@ -33,8 +43,7 @@ async def categorize_clothing(image_base64: str) -> dict:
       max_tokens=200
    )
 
-   content = response.choices[0].message.content.strip()
-   content = content.replace("```json", "").replace("```", "").strip()
+   content = _extract_json(response.choices[0].message.content.strip())
 
    try:
       return json.loads(content)
@@ -89,8 +98,7 @@ Formato obrigatório:
       max_tokens=200
    )
 
-   content = response.choices[0].message.content.strip()
-   content = content.replace("```json", "").replace("```", "").strip()
+   content = _extract_json(response.choices[0].message.content.strip())
 
    try:
       result = json.loads(content)

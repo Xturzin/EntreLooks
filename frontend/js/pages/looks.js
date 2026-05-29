@@ -1,6 +1,11 @@
 const LooksPage = {
-   currentLook: null,
-   activeMode:  'casual',
+   currentLook:  null,
+   activeMode:   'casual',
+   _savedLooks:  [],
+   _offset:      0,
+   _limit:       20,
+   _hasMore:     false,
+   _loading:     false,
 
    render() {
       return `
@@ -28,6 +33,9 @@ const LooksPage = {
    async init() {
       this.currentLook = null
       this.activeMode  = 'casual'
+      this._savedLooks = []
+      this._offset     = 0
+      this._hasMore    = false
 
       document.querySelectorAll('.mode-pill').forEach(pill => {
          pill.addEventListener('click', () => {
@@ -127,15 +135,37 @@ const LooksPage = {
       }
    },
 
-   async loadSavedLooks() {
-      const response = await API.get('/looks/')
-      if (!response?.ok) return
+   async loadSavedLooks(append = false) {
+      if (this._loading && append) return
+      this._loading = true
 
-      this.renderSavedLooks(await response.json())
+      if (!append) {
+         this._offset     = 0
+         this._savedLooks = []
+      }
+
+      try {
+         const response = await API.get(`/looks/?limit=${this._limit}&offset=${this._offset}`)
+         if (!response?.ok) return
+
+         const page       = await response.json()
+         this._hasMore    = page.length === this._limit
+         this._savedLooks = append ? [...this._savedLooks, ...page] : page
+
+         this.renderSavedLooks()
+      } finally {
+         this._loading = false
+      }
    },
 
-   renderSavedLooks(looks) {
+   async loadMoreSaved() {
+      this._offset += this._limit
+      await this.loadSavedLooks(true)
+   },
+
+   renderSavedLooks() {
       const container = document.getElementById('saved-looks')
+      const looks     = this._savedLooks
 
       if (!looks || looks.length === 0) {
          container.innerHTML = `
@@ -146,6 +176,10 @@ const LooksPage = {
          `
          return
       }
+
+      const loadMoreBtn = this._hasMore
+         ? `<button class="btn-secondary load-more-looks" id="load-more-looks">Carregar mais</button>`
+         : ''
 
       container.innerHTML = `
          <h2 class="section-title">Looks salvos</h2>
@@ -161,6 +195,11 @@ const LooksPage = {
                </div>
             `).join('')}
          </div>
+         ${loadMoreBtn}
       `
+
+      if (this._hasMore) {
+         document.getElementById('load-more-looks').addEventListener('click', () => this.loadMoreSaved())
+      }
    }
 }
