@@ -66,6 +66,7 @@ function showOnboarding() {
 function logout() {
    Auth.clearToken()
    localStorage.removeItem('el_onboarded')
+   AIPage.history = []
    showAuthPage()
 }
 

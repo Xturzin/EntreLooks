@@ -129,6 +129,32 @@ async loadStats() {
       reader.readAsDataURL(file)
    },
 
+   async resizeImage(file, maxPx = 1200) {
+      return new Promise((resolve) => {
+         const img = new Image()
+         const url = URL.createObjectURL(file)
+         img.onload = () => {
+            URL.revokeObjectURL(url)
+            const { width: w, height: h } = img
+            if (w <= maxPx && h <= maxPx) { resolve(file); return }
+            const scale   = maxPx / Math.max(w, h)
+            const canvas  = document.createElement('canvas')
+            canvas.width  = Math.round(w * scale)
+            canvas.height = Math.round(h * scale)
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+            canvas.toBlob(
+               (blob) => resolve(blob
+                  ? new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })
+                  : file
+               ),
+               'image/jpeg', 0.88
+            )
+         }
+         img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+         img.src = url
+      })
+   },
+
    async upload() {
       if (!this.selectedFile) return
 
@@ -144,8 +170,9 @@ async loadStats() {
       status.classList.remove('hidden')
 
       try {
+         const resized  = await this.resizeImage(this.selectedFile)
          const formData = new FormData()
-         formData.append('file', this.selectedFile)
+         formData.append('file', resized)
 
          const response = await API.post('/clothes/', formData)
 
@@ -196,6 +223,7 @@ async loadStats() {
          const page    = response.ok ? await response.json() : []
          this._hasMore = page.length === this._limit
          this.clothes  = append ? [...this.clothes, ...page] : page
+         this._offset += page.length
 
          this.renderFilters()
          this.applyFilter()
@@ -205,7 +233,6 @@ async loadStats() {
    },
 
    async loadMore() {
-      this._offset += this._limit
       await this.loadClothes(true)
    },
 
@@ -257,7 +284,23 @@ async loadStats() {
       this.renderGrid(filtered)
    },
 
-   async deleteCloth(clothId) {
+   async deleteCloth(clothId, btn) {
+      if (btn.dataset.confirm !== 'true') {
+         btn.dataset.confirm = 'true'
+         btn.textContent     = '?'
+         btn.style.background = 'rgba(197,48,48,0.85)'
+         setTimeout(() => {
+            if (btn.dataset.confirm === 'true') {
+               btn.dataset.confirm  = ''
+               btn.textContent      = '×'
+               btn.style.background = ''
+            }
+         }, 2500)
+         return
+      }
+
+      btn.dataset.confirm = ''
+
       const response = await API.delete(`/clothes/${clothId}`)
       if (!response?.ok) {
          showToast('Erro ao remover peça', 'error')
@@ -301,7 +344,7 @@ async loadStats() {
       grid.querySelectorAll('.cloth-delete-btn').forEach(btn => {
          btn.addEventListener('click', (e) => {
             e.stopPropagation()
-            this.deleteCloth(btn.dataset.id)
+            this.deleteCloth(btn.dataset.id, btn)
          })
       })
 

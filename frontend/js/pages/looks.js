@@ -151,6 +151,7 @@ const LooksPage = {
          const page       = await response.json()
          this._hasMore    = page.length === this._limit
          this._savedLooks = append ? [...this._savedLooks, ...page] : page
+         this._offset    += page.length
 
          this.renderSavedLooks()
       } finally {
@@ -159,8 +160,35 @@ const LooksPage = {
    },
 
    async loadMoreSaved() {
-      this._offset += this._limit
       await this.loadSavedLooks(true)
+   },
+
+   async deleteLook(lookId, btn) {
+      if (btn.dataset.confirm !== 'true') {
+         btn.dataset.confirm  = 'true'
+         btn.textContent      = '?'
+         btn.style.background = 'rgba(197,48,48,0.85)'
+         setTimeout(() => {
+            if (btn.dataset.confirm === 'true') {
+               btn.dataset.confirm  = ''
+               btn.textContent      = '×'
+               btn.style.background = ''
+            }
+         }, 2500)
+         return
+      }
+
+      btn.dataset.confirm = ''
+
+      const response = await API.delete(`/looks/${lookId}`)
+      if (!response?.ok) {
+         showToast('Erro ao remover look', 'error')
+         return
+      }
+
+      this._savedLooks = this._savedLooks.filter(l => l.id !== lookId)
+      this.renderSavedLooks()
+      showToast('Look removido')
    },
 
    renderSavedLooks() {
@@ -186,6 +214,7 @@ const LooksPage = {
          <div class="saved-grid">
             ${looks.map(look => `
                <div class="saved-look-card">
+                  <button class="cloth-delete-btn" data-id="${look.id}" aria-label="Remover look">×</button>
                   <div class="saved-look-clothes">
                      ${(look.clothes || []).slice(0, 4).map(c => `
                         <img src="${c.image_url}" alt="${c.type || ''}">
@@ -197,6 +226,13 @@ const LooksPage = {
          </div>
          ${loadMoreBtn}
       `
+
+      container.querySelectorAll('.cloth-delete-btn').forEach(btn => {
+         btn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this.deleteLook(btn.dataset.id, btn)
+         })
+      })
 
       if (this._hasMore) {
          document.getElementById('load-more-looks').addEventListener('click', () => this.loadMoreSaved())

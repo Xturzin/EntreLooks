@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.style_service import analyze_wardrobe

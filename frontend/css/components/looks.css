@@ -139,6 +139,7 @@
    border-radius: var(--radius-md);
    border: 1px solid var(--border);
    overflow: hidden;
+   position: relative;
 }
 
 .saved-look-clothes {
@@ -157,4 +158,8 @@
 .saved-look-card .look-mode {
    display: block;
    padding: var(--space-sm) var(--space-md);
+}
+
+.load-more-looks {
+   margin-top: var(--space-md);
 }

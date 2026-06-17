@@ -128,9 +128,9 @@ const HomePage = {
    },
 
    async loadStats() {
-      const [statsRes, looksRes] = await Promise.all([
+      const [statsRes, countRes] = await Promise.all([
          API.get('/clothes/stats'),
-         API.get('/looks/?limit=100')
+         API.get('/looks/count')
       ])
 
       if (statsRes?.ok) {
@@ -138,10 +138,10 @@ const HomePage = {
          document.getElementById('stat-clothes').textContent = stats.total
       }
 
-      if (looksRes?.ok) {
-         const looks = await looksRes.json()
+      if (countRes?.ok) {
+         const data = await countRes.json()
          document.getElementById('stat-looks').textContent =
-            looks.length === 100 ? '99+' : looks.length
+            data.count > 99 ? '99+' : data.count
       }
    },
 

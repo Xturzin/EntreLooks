@@ -134,6 +134,9 @@ const OnboardingPage = {
       setTimeout(() => {
          overlay.remove()
          navigate('wardrobe')
+         if (!skipped) {
+            setTimeout(() => document.getElementById('upload-trigger')?.click(), 150)
+         }
       }, 300)
    }
 }

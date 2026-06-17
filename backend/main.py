@@ -15,9 +15,14 @@ logger = logging.getLogger("entrelooks")
 
 app = FastAPI(title="EntreLooks API", version="1.0.0")
 
+_cors_origins = (
+   ["*"] if settings.ENVIRONMENT != "production"
+   else [settings.FRONTEND_URL]
+)
+
 app.add_middleware(
    CORSMiddleware,
-   allow_origins=[settings.FRONTEND_URL],
+   allow_origins=_cors_origins,
    allow_credentials=True,
    allow_methods=["*"],
    allow_headers=["*"],

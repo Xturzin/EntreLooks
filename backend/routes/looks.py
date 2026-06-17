@@ -13,6 +13,17 @@ class GenerateLookRequest(BaseModel):
    mode:    str            = "casual"
    weather: Optional[dict] = None
 
+@router.get("/count")
+async def count_saved_looks(user=Depends(get_current_user)):
+   result = (
+      supabase.table("looks")
+      .select("id", count="exact")
+      .eq("user_id", user.id)
+      .eq("saved", True)
+      .execute()
+   )
+   return {"count": result.count or 0}
+
 @router.post("/generate")
 async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user)):
    rate_limiter.check(user.id, limit=15, window=3600)  # 15 looks/hora
@@ -32,11 +43,11 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
          detail="Adicione pelo menos 2 peças ao armário para gerar um look"
       )
 
-   # busca contexto de rejeições para aprendizado
-   rejected_context = await _get_rejection_context(user.id)
+   # busca contexto de rejeições e de aceitações para aprendizado
+   rejected_context, positive_context = await _get_rejection_context(user.id), await _get_positive_context(user.id)
 
    try:
-      clothes_ids = await generate_look_ai(clothes, data.mode, data.weather, rejected_context)
+      clothes_ids = await generate_look_ai(clothes, data.mode, data.weather, rejected_context, positive_context)
    except Exception:
       raise HTTPException(status_code=500, detail="Erro ao gerar o look. Tente novamente.")
 
@@ -59,6 +70,42 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
    look_data["clothes"]     = [clothes_map[id] for id in clothes_ids if id in clothes_map]
 
    return look_data
+
+async def _get_positive_context(user_id: str) -> list:
+   try:
+      saved = (
+         supabase.table("looks")
+         .select("clothes_ids")
+         .eq("user_id", user_id)
+         .eq("saved", True)
+         .order("created_at", desc=True)
+         .limit(5)
+         .execute()
+      )
+
+      if not saved.data:
+         return []
+
+      all_cloth_ids = list({
+         cid
+         for look in saved.data
+         for cid in look.get("clothes_ids", [])
+      })
+
+      if not all_cloth_ids:
+         return []
+
+      positive_clothes = (
+         supabase.table("clothes")
+         .select("type, color, style")
+         .in_("id", all_cloth_ids[:20])
+         .execute()
+      )
+
+      return positive_clothes.data
+
+   except Exception:
+      return []
 
 async def _get_rejection_context(user_id: str) -> list:
    try:
@@ -104,6 +151,23 @@ async def _get_rejection_context(user_id: str) -> list:
 
    except Exception:
       return []
+
+@router.delete("/{look_id}")
+async def delete_look(look_id: str, user=Depends(get_current_user)):
+   result = (
+      supabase.table("looks")
+      .select("id")
+      .eq("id", look_id)
+      .eq("user_id", user.id)
+      .execute()
+   )
+
+   if not result.data:
+      raise HTTPException(status_code=404, detail="Look não encontrado")
+
+   supabase.table("looks").delete().eq("id", look_id).eq("user_id", user.id).execute()
+
+   return {"deleted": True}
 
 @router.patch("/{look_id}/save")
 async def save_look(look_id: str, user=Depends(get_current_user)):

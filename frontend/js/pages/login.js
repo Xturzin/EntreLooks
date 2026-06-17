@@ -55,12 +55,16 @@ const LoginPage = {
       btn.textContent = 'Aguarde...'
       document.getElementById('auth-error').classList.add('hidden')
 
+      const controller = new AbortController()
+      const timeout    = setTimeout(() => controller.abort(), 30000)
+
       try {
          const endpoint = this.mode === 'login' ? '/auth/login' : '/auth/signup'
          const response = await fetch(CONFIG.API_URL + endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            signal: controller.signal
          })
 
          const data = await response.json()
@@ -71,7 +75,7 @@ const LoginPage = {
          }
 
          if (this.mode === 'signup') {
-            this.showError('Conta criada! Agora entre com seus dados.')
+            this.showSuccess('Conta criada! Agora entre com seus dados.')
             document.querySelector('[data-mode="login"]').click()
             return
          }
@@ -80,8 +84,9 @@ const LoginPage = {
          showApp()
 
       } catch (e) {
-         this.showError('Erro de conexão com o servidor')
+         this.showError(e.name === 'AbortError' ? 'A requisição demorou demais. Tente novamente.' : 'Erro de conexão com o servidor')
       } finally {
+         clearTimeout(timeout)
          btn.disabled    = false
          btn.textContent = this.mode === 'login' ? 'Entrar' : 'Criar conta'
       }
@@ -90,6 +95,14 @@ const LoginPage = {
    showError(msg) {
       const el = document.getElementById('auth-error')
       el.textContent = msg
+      el.className   = 'auth-error'
+      el.classList.remove('hidden')
+   },
+
+   showSuccess(msg) {
+      const el = document.getElementById('auth-error')
+      el.textContent = msg
+      el.className   = 'auth-success'
       el.classList.remove('hidden')
    }
 }

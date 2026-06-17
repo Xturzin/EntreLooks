@@ -22,28 +22,36 @@ def _get_session():
 
    return _rembg_session
 
+def _to_png(image_bytes: bytes) -> bytes:
+   """Converte qualquer formato suportado pelo Pillow para PNG RGB."""
+   img    = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+   output = io.BytesIO()
+   img.save(output, format="PNG")
+   return output.getvalue()
+
 def remove_background(image_bytes: bytes) -> bytes:
    session = _get_session()
 
-   if session is None:
-      return image_bytes
-
    try:
-      from rembg import remove as rembg_remove
-
-      result = rembg_remove(image_bytes, session=session)
-
-      # converte para PNG com fundo branco
-      img        = Image.open(io.BytesIO(result)).convert("RGBA")
-      background = Image.new("RGBA", img.size, (255, 255, 255, 255))
-      background.paste(img, mask=img.split()[3])
-
-      output = io.BytesIO()
-      background.convert("RGB").save(output, format="PNG")
-      return output.getvalue()
+      if session is not None:
+         from rembg import remove as rembg_remove
+         result     = rembg_remove(image_bytes, session=session)
+         img_rgba   = Image.open(io.BytesIO(result)).convert("RGBA")
+         background = Image.new("RGBA", img_rgba.size, (255, 255, 255, 255))
+         background.paste(img_rgba, mask=img_rgba.split()[3])
+         output = io.BytesIO()
+         background.convert("RGB").save(output, format="PNG")
+         return output.getvalue()
+      else:
+         # rembg indisponível: só normaliza para PNG
+         return _to_png(image_bytes)
 
    except Exception:
-      return image_bytes
+      # último recurso: tenta normalizar; se falhar, retorna original
+      try:
+         return _to_png(image_bytes)
+      except Exception:
+         return image_bytes
 
 def to_base64(image_bytes: bytes) -> str:
    return base64.b64encode(image_bytes).decode("utf-8")

@@ -125,6 +125,19 @@ const StylePage = {
             </div>
          ` : ''}
 
+         ${data.top_occasions?.length > 0 ? `
+            <div class="style-section">
+               <p class="style-section-title">Ocasiões</p>
+               <div class="tag-list">
+                  ${data.top_occasions.map(o => `
+                     <span class="style-tag">
+                        ${o.name}<span class="tag-pct">${o.percentage}%</span>
+                     </span>
+                  `).join('')}
+               </div>
+            </div>
+         ` : ''}
+
          ${data.summary ? `
             <button class="btn-generate" id="btn-generate-summary">Atualizar análise</button>
          ` : ''}

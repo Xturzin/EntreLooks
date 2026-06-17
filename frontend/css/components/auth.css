@@ -90,6 +90,13 @@
    padding: var(--space-xs) 0;
 }
 
+.auth-success {
+   font-size: var(--text-sm);
+   color: #2F855A;
+   text-align: center;
+   padding: var(--space-xs) 0;
+}
+
 .btn-primary {
    width: 100%;
    padding: 14px;
