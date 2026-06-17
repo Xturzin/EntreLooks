@@ -114,6 +114,8 @@ const AIPage = {
 
    addBubble(role, content, isLoading = false) {
       const messages = document.getElementById('chat-messages')
+      if (!messages) return null
+
       const id       = `bubble-${Date.now()}-${Math.random()}`
 
       const div       = document.createElement('div')

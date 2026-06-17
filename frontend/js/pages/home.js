@@ -164,12 +164,14 @@ const HomePage = {
          if (!response.ok) {
             const err       = await response.json().catch(() => ({}))
             const container = document.getElementById('home-look')
-            container.innerHTML = `
-               <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
-                  ${err.detail || 'Erro ao gerar look'}
-               </p>
-            `
-            container.classList.remove('hidden')
+            if (container) {
+               container.innerHTML = `
+                  <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
+                     ${err.detail || 'Erro ao gerar look'}
+                  </p>
+               `
+               container.classList.remove('hidden')
+            }
          } else {
             this.currentLook = await response.json()
             this.renderLook(this.currentLook)
@@ -182,6 +184,7 @@ const HomePage = {
 
    renderLook(look) {
       const container = document.getElementById('home-look')
+      if (!container) return
       const clothes   = look.clothes || []
 
       container.innerHTML = `

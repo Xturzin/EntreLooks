@@ -17,7 +17,7 @@ async def upload_clothing(
 ):
    rate_limiter.check(user.id, limit=20, window=3600)  # 20 uploads/hora
 
-   if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/heic"):
+   if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"):
       raise HTTPException(status_code=400, detail="Formato inválido. Use JPG, PNG ou WEBP.")
 
    image_bytes = await file.read()

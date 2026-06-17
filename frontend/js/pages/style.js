@@ -59,7 +59,7 @@ const StylePage = {
       }
 
       const summaryBlock = data.summary
-         ? `<div class="style-summary">${data.summary}</div>`
+         ? `<div class="style-summary"></div>`
          : `
             <div class="style-summary-placeholder">
                <p>Seu resumo de estilo ainda não foi gerado.</p>
@@ -142,6 +142,11 @@ const StylePage = {
             <button class="btn-generate" id="btn-generate-summary">Atualizar análise</button>
          ` : ''}
       `
+
+      if (data.summary) {
+         const summaryEl = container.querySelector('.style-summary')
+         if (summaryEl) summaryEl.textContent = data.summary
+      }
 
       document.getElementById('btn-generate-summary')?.addEventListener('click', () => this.generate())
    },

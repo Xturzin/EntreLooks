@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
@@ -44,7 +45,10 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
       )
 
    # busca contexto de rejeições e de aceitações para aprendizado
-   rejected_context, positive_context = await _get_rejection_context(user.id), await _get_positive_context(user.id)
+   rejected_context, positive_context = await asyncio.gather(
+      _get_rejection_context(user.id),
+      _get_positive_context(user.id)
+   )
 
    try:
       clothes_ids = await generate_look_ai(clothes, data.mode, data.weather, rejected_context, positive_context)

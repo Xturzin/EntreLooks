@@ -24,5 +24,10 @@ async def signup(data: AuthRequest):
 async def login(data: AuthRequest):
    result, status = await sign_in_user(data.email, data.password)
    if status >= 400:
-      raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+      error_desc = result.get("error_description", "")
+      if "not confirmed" in error_desc.lower():
+         detail = "Confirme seu email antes de entrar. Verifique sua caixa de entrada."
+      else:
+         detail = "Email ou senha incorretos"
+      raise HTTPException(status_code=401, detail=detail)
    return {"token": result.get("access_token")}

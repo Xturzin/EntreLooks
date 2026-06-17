@@ -31,7 +31,6 @@ function showAuthPage() {
 
 async function showApp() {
    document.getElementById('auth-view').classList.add('hidden')
-   document.getElementById('app').classList.remove('hidden')
 
    // restaura tab da URL se existir
    const hashPage = window.location.hash.replace('#', '')
@@ -52,6 +51,7 @@ async function showApp() {
       localStorage.setItem('el_onboarded', 'true')
    }
 
+   document.getElementById('app').classList.remove('hidden')
    const targetPage = routes[hashPage] ? hashPage : 'home'
    navigate(targetPage)
 }
