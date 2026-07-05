@@ -1,3 +1,37 @@
+// Posições fixas da colagem do look. A ordem aqui é a ordem que as peças
+// entram no look salvo. O "area" casa com o grid-template-areas do CSS,
+// e o "zone" diz que tipo de peça cabe em cada espaço.
+const LOOK_SLOTS = [
+   { key: 'top',    zone: 'top',       area: 'top',    hint: 'parte de cima' },
+   { key: 'bottom', zone: 'bottom',    area: 'bottom', hint: 'parte de baixo' },
+   { key: 'shoes',  zone: 'shoes',     area: 'shoes',  hint: 'calçado' },
+   { key: 'bag',    zone: 'bag',       area: 'bag',    hint: 'bolsa' },
+   { key: 'acc1',   zone: 'accessory', area: 'acc1',   hint: 'acessório' },
+   { key: 'acc2',   zone: 'accessory', area: 'acc2',   hint: 'acessório' },
+   { key: 'acc3',   zone: 'accessory', area: 'acc3',   hint: 'acessório' },
+]
+
+// A IA guarda o tipo da peça como texto livre (camiseta, saia, tênis...).
+// Aqui a gente descobre em qual espaço da colagem a peça se encaixa a partir
+// dessas palavras. Não precisa ser perfeito, só cobrir os casos mais comuns.
+const ZONE_KEYWORDS = {
+   shoes:     ['tênis', 'tenis', 'sapato', 'sandália', 'sandalia', 'chinelo', 'bota', 'sapatilha', 'rasteira', 'salto', 'mocassim', 'tamanco', 'slide', 'scarpin'],
+   bag:       ['bolsa', 'mochila', 'carteira', 'clutch', 'pochete', 'necessaire'],
+   accessory: ['colar', 'anel', 'brinco', 'pulseira', 'óculos', 'oculos', 'chapéu', 'chapeu', 'cinto', 'lenço', 'lenco', 'relógio', 'relogio', 'boné', 'bone', 'gorro', 'tiara', 'presilha', 'bracelete', 'corrente', 'choker'],
+   bottom:    ['calça', 'calca', 'saia', 'short', 'bermuda', 'legging', 'pantalona', 'jeans', 'calção', 'calcao'],
+   top:       ['vestido', 'macacão', 'macacao', 'macaquinho', 'jardineira', 'camiseta', 'camisa', 'blusa', 'top', 'cropped', 'regata', 'moletom', 'casaco', 'jaqueta', 'blazer', 'suéter', 'sueter', 'tricô', 'tricot', 'cardigã', 'cardiga', 'colete', 'body', 'bata'],
+}
+
+// Ordem de teste importa: calçado e acessório antes de top pra não cair no genérico.
+function zoneOf(type) {
+   const t = (type || '').toLowerCase()
+   for (const zone of ['shoes', 'bag', 'accessory', 'bottom', 'top']) {
+      if (ZONE_KEYWORDS[zone].some(word => t.includes(word))) return zone
+   }
+   // sem correspondência, trata como parte de cima
+   return 'top'
+}
+
 const LooksPage = {
    currentLook:  null,
    activeMode:   'casual',
@@ -7,12 +41,12 @@ const LooksPage = {
    _hasMore:     false,
    _loading:     false,
 
-   // --- construtor manual ---
-   activeTab:    'build',        // 'build' | 'ai'
-   buildMode:    'casual',
-   buildFilter:  'all',
+   // construtor manual (colagem)
+   activeTab:     'build',       // 'build' | 'ai'
+   buildMode:     'casual',
    _buildClothes: [],
-   _selectedIds:  new Set(),
+   _slots:        {},            // slot.key -> id da peça
+   _pickerSlot:   null,          // slot aberto na folha de seleção
 
    render() {
       return `
@@ -34,8 +68,13 @@ const LooksPage = {
                   <button class="mode-pill" data-bmode="trabalho">Trabalho</button>
                   <button class="mode-pill" data-bmode="festa">Festa</button>
                </div>
-               <div class="filter-bar hidden" id="build-filter"></div>
-               <div class="clothes-grid" id="build-grid"></div>
+
+               <div class="look-canvas" id="look-canvas"></div>
+
+               <div class="build-actions" id="build-actions">
+                  <button class="btn-secondary" id="build-shuffle">Embaralhar look</button>
+                  <button class="btn-primary" id="build-save">Salvar look</button>
+               </div>
             </div>
 
             <div id="ai-view" class="hidden">
@@ -52,9 +91,15 @@ const LooksPage = {
             <div id="saved-looks" class="saved-looks"></div>
          </div>
 
-         <div class="build-tray hidden" id="build-tray">
-            <div class="build-tray-items" id="build-tray-items"></div>
-            <button class="btn-primary build-tray-save" id="build-save">Salvar look</button>
+         <div class="picker-sheet hidden" id="picker-sheet">
+            <div class="picker-backdrop" id="picker-backdrop"></div>
+            <div class="picker-panel">
+               <div class="picker-header">
+                  <span id="picker-title">Escolher peça</span>
+                  <button class="picker-close" id="picker-close" aria-label="Fechar">×</button>
+               </div>
+               <div class="picker-grid" id="picker-grid"></div>
+            </div>
          </div>
       `
    },
@@ -64,41 +109,38 @@ const LooksPage = {
       this.activeMode    = 'casual'
       this.activeTab     = 'build'
       this.buildMode     = 'casual'
-      this.buildFilter   = 'all'
       this._savedLooks   = []
       this._offset       = 0
       this._hasMore      = false
       this._buildClothes = []
-      this._selectedIds  = new Set()
+      this._slots        = {}
+      this._pickerSlot   = null
 
       // troca de abas (Montar / IA)
       document.querySelectorAll('.look-tab').forEach(tab => {
          tab.addEventListener('click', () => this.switchTab(tab.dataset.tab))
       })
 
-      // modo do look manual
-      this.bindModeBar('#build-mode-bar', 'buildMode')
-
-      // modo do look da IA
-      document.querySelectorAll('#ai-view .mode-pill').forEach(pill => {
-         pill.addEventListener('click', () => {
-            this.activeMode = pill.dataset.mode
-            document.querySelectorAll('#ai-view .mode-pill').forEach(p => p.classList.remove('active'))
-            pill.classList.add('active')
-         })
-      })
+      // modo do look manual e do look da IA
+      this.bindModeBar('#build-mode-bar', 'buildMode', 'bmode')
+      this.bindModeBar('#ai-view', 'activeMode', 'mode')
 
       document.getElementById('generate-btn').addEventListener('click', () => this.generate())
+      document.getElementById('build-shuffle').addEventListener('click', () => this.shuffleLook())
       document.getElementById('build-save').addEventListener('click', () => this.saveManualLook())
+
+      // fechar a folha de seleção tocando fora ou no X
+      document.getElementById('picker-close').addEventListener('click', () => this.closePicker())
+      document.getElementById('picker-backdrop').addEventListener('click', () => this.closePicker())
 
       await Promise.all([this.loadBuildClothes(), this.loadSavedLooks()])
    },
 
-   bindModeBar(barSelector, stateKey) {
-      document.querySelectorAll(`${barSelector} .mode-pill`).forEach(pill => {
+   bindModeBar(scopeSelector, stateKey, dataAttr) {
+      document.querySelectorAll(`${scopeSelector} .mode-pill`).forEach(pill => {
          pill.addEventListener('click', () => {
-            this[stateKey] = pill.dataset.bmode
-            document.querySelectorAll(`${barSelector} .mode-pill`).forEach(p => p.classList.remove('active'))
+            this[stateKey] = pill.dataset[dataAttr]
+            document.querySelectorAll(`${scopeSelector} .mode-pill`).forEach(p => p.classList.remove('active'))
             pill.classList.add('active')
          })
       })
@@ -111,139 +153,138 @@ const LooksPage = {
       })
       document.getElementById('build-view').classList.toggle('hidden', tab !== 'build')
       document.getElementById('ai-view').classList.toggle('hidden', tab !== 'ai')
-      // a bandeja só faz sentido no modo Montar
-      this.updateTray()
    },
 
-   // ============ CONSTRUTOR MANUAL ============
+   // ============ CONSTRUTOR MANUAL (COLAGEM) ============
 
    async loadBuildClothes() {
-      const grid = document.getElementById('build-grid')
-      grid.innerHTML = Array(6).fill(0).map(() => `
-         <div class="skeleton-card">
-            <div class="skeleton" style="width:100%;aspect-ratio:3/4"></div>
-         </div>
-      `).join('')
-
       const response = await API.get('/clothes/?limit=100&offset=0')
       if (!response) return
 
       this._buildClothes = response.ok ? await response.json() : []
-      this.renderBuildFilters()
-      this.renderBuildGrid()
-   },
 
-   renderBuildFilters() {
-      const bar = document.getElementById('build-filter')
+      const canvas  = document.getElementById('look-canvas')
+      const actions = document.getElementById('build-actions')
 
       if (this._buildClothes.length === 0) {
-         bar.classList.add('hidden')
-         return
-      }
-
-      const types = ['all', ...new Set(this._buildClothes.map(c => c.type).filter(Boolean))]
-
-      bar.innerHTML = types.map(type => `
-         <button class="filter-pill ${type === this.buildFilter ? 'active' : ''}" data-bfilter="${type}">
-            ${type === 'all' ? 'Todas' : type}
-         </button>
-      `).join('')
-
-      bar.classList.remove('hidden')
-
-      bar.querySelectorAll('.filter-pill').forEach(pill => {
-         pill.addEventListener('click', () => {
-            this.buildFilter = pill.dataset.bfilter
-            bar.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'))
-            pill.classList.add('active')
-            this.renderBuildGrid()
-         })
-      })
-   },
-
-   renderBuildGrid() {
-      const grid = document.getElementById('build-grid')
-
-      if (this._buildClothes.length === 0) {
-         grid.innerHTML = `
-            <div class="empty-state">
+         canvas.classList.add('look-canvas-empty')
+         canvas.innerHTML = `
+            <div class="empty-state" style="grid-column:unset">
                <p>Seu armário está vazio</p>
                <span>Adicione peças no Armário para montar seus looks</span>
             </div>
          `
+         actions.classList.add('hidden')
          return
       }
 
-      const list = this.buildFilter === 'all'
-         ? this._buildClothes
-         : this._buildClothes.filter(c => c.type === this.buildFilter)
+      // já abre com um look montado, pra pessoa ver a colagem pronta
+      this.shuffleLook()
+   },
 
-      grid.innerHTML = list.map(cloth => {
-         const selected = this._selectedIds.has(cloth.id)
+   // peças do armário que cabem numa zona (parte de cima, calçado, etc.)
+   piecesInZone(zone) {
+      return this._buildClothes.filter(c => zoneOf(c.type) === zone)
+   },
+
+   // sorteia uma peça pra cada espaço, sem repetir a mesma peça em dois lugares
+   shuffleLook() {
+      const used = new Set()
+
+      LOOK_SLOTS.forEach(slot => {
+         const options = this.piecesInZone(slot.zone).filter(c => !used.has(c.id))
+         if (options.length === 0) {
+            this._slots[slot.key] = null
+            return
+         }
+         const pick = options[Math.floor(Math.random() * options.length)]
+         this._slots[slot.key] = pick.id
+         used.add(pick.id)
+      })
+
+      this.renderCanvas()
+   },
+
+   renderCanvas() {
+      const canvas = document.getElementById('look-canvas')
+      canvas.classList.remove('look-canvas-empty')
+
+      const byId = Object.fromEntries(this._buildClothes.map(c => [c.id, c]))
+
+      canvas.innerHTML = LOOK_SLOTS.map(slot => {
+         const cloth = this._slots[slot.key] ? byId[this._slots[slot.key]] : null
+
+         if (cloth) {
+            return `
+               <button class="look-slot filled area-${slot.area}" data-slot="${slot.key}">
+                  <img src="${cloth.image_url}" alt="">
+               </button>
+            `
+         }
+
          return `
-            <div class="cloth-card build-card ${selected ? 'selected' : ''}" data-id="${cloth.id}">
-               <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
-               <div class="build-check">✓</div>
-               <div class="cloth-info">
-                  <span class="cloth-type">${cloth.type || 'Peça'}</span>
-                  ${cloth.color ? `<span class="cloth-color">${cloth.color}</span>` : ''}
-               </div>
-            </div>
+            <button class="look-slot empty area-${slot.area}" data-slot="${slot.key}">
+               <span class="look-slot-hint">${slot.hint}</span>
+            </button>
          `
       }).join('')
 
-      grid.querySelectorAll('.build-card').forEach(card => {
-         card.addEventListener('click', () => this.toggleSelect(card.dataset.id))
+      canvas.querySelectorAll('.look-slot').forEach(el => {
+         el.addEventListener('click', () => this.openPicker(el.dataset.slot))
       })
    },
 
-   toggleSelect(clothId) {
-      if (this._selectedIds.has(clothId)) {
-         this._selectedIds.delete(clothId)
+   // abre a folha de baixo com as peças que cabem naquele espaço
+   openPicker(slotKey) {
+      const slot   = LOOK_SLOTS.find(s => s.key === slotKey)
+      const pieces = this.piecesInZone(slot.zone)
+      this._pickerSlot = slotKey
+
+      document.getElementById('picker-title').textContent = `Escolher ${slot.hint}`
+
+      const grid      = document.getElementById('picker-grid')
+      const currentId = this._slots[slotKey]
+
+      if (pieces.length === 0) {
+         grid.innerHTML = `<p class="picker-empty">Nenhuma peça dessa categoria no armário ainda.</p>`
       } else {
-         this._selectedIds.add(clothId)
+         // se o espaço já tem peça, deixa tirar sem escolher outra
+         const clearBtn = currentId
+            ? `<button class="picker-item picker-clear" data-clear="1">tirar</button>`
+            : ''
+
+         grid.innerHTML = clearBtn + pieces.map(c => `
+            <button class="picker-item ${c.id === currentId ? 'selected' : ''}" data-id="${c.id}">
+               <img src="${c.image_url}" alt="">
+            </button>
+         `).join('')
       }
 
-      const card = document.querySelector(`.build-card[data-id="${clothId}"]`)
-      if (card) card.classList.toggle('selected', this._selectedIds.has(clothId))
-
-      this.updateTray()
-   },
-
-   updateTray() {
-      const tray = document.getElementById('build-tray')
-      if (!tray) return
-
-      const show = this.activeTab === 'build' && this._selectedIds.size > 0
-      tray.classList.toggle('hidden', !show)
-      document.getElementById('build-view').classList.toggle('tray-open', show)
-
-      if (!show) return
-
-      const selected = this._buildClothes.filter(c => this._selectedIds.has(c.id))
-      const itemsEl  = document.getElementById('build-tray-items')
-
-      itemsEl.innerHTML = selected.map(c => `
-         <div class="build-tray-item" data-id="${c.id}">
-            <img src="${c.image_url}" alt="${c.type || ''}">
-            <button class="build-tray-remove" data-id="${c.id}" aria-label="Tirar peça">×</button>
-         </div>
-      `).join('')
-
-      itemsEl.querySelectorAll('.build-tray-remove').forEach(btn => {
-         btn.addEventListener('click', (e) => {
-            e.stopPropagation()
-            this.toggleSelect(btn.dataset.id)
+      grid.querySelectorAll('.picker-item').forEach(el => {
+         el.addEventListener('click', () => {
+            this._slots[this._pickerSlot] = el.dataset.clear ? null : el.dataset.id
+            this.closePicker()
+            this.renderCanvas()
          })
       })
 
-      const saveBtn = document.getElementById('build-save')
-      saveBtn.textContent = `Salvar look (${this._selectedIds.size})`
+      const sheet = document.getElementById('picker-sheet')
+      sheet.classList.remove('hidden')
+      requestAnimationFrame(() => sheet.classList.add('open'))
+   },
+
+   closePicker() {
+      const sheet = document.getElementById('picker-sheet')
+      sheet.classList.remove('open')
+      setTimeout(() => sheet.classList.add('hidden'), 250)
    },
 
    async saveManualLook() {
-      if (this._selectedIds.size < 2) {
-         showToast('Escolha pelo menos 2 peças', 'error')
+      // pega as peças da colagem na ordem dos espaços, sem repetir
+      const ids = [...new Set(LOOK_SLOTS.map(s => this._slots[s.key]).filter(Boolean))]
+
+      if (ids.length < 2) {
+         showToast('Monte um look com pelo menos 2 peças', 'error')
          return
       }
 
@@ -252,25 +293,21 @@ const LooksPage = {
       btn.textContent = 'Salvando...'
 
       const response = await API.post('/looks/manual', {
-         clothes_ids: [...this._selectedIds],
+         clothes_ids: ids,
          mode:        this.buildMode
       })
 
       if (response?.ok) {
          Analytics.saveLook(this.buildMode)
-         this._selectedIds.clear()
-         this.renderBuildGrid()
-         this.updateTray()
          await this.loadSavedLooks()
-         showToast('Look montado e salvo!')
+         showToast('Look salvo!')
       } else {
          const err = response ? await response.json().catch(() => ({})) : {}
          showToast(err.detail || 'Erro ao salvar o look', 'error')
       }
 
-      btn.disabled = false
-      this.updateTray()
-      if (this._selectedIds.size === 0) btn.textContent = 'Salvar look'
+      btn.disabled    = false
+      btn.textContent = 'Salvar look'
    },
 
    // ============ GERADOR POR IA ============

@@ -27,112 +27,187 @@
    box-shadow: var(--shadow-xs);
 }
 
-/* construtor manual: seleção de peças */
-#build-view {
-   padding-bottom: var(--space-md);
+/* colagem do look (montar): quadro branco estilo lookbook.
+   As posições vêm do grid-template-areas: parte de cima e de baixo no centro,
+   calçado embaixo à esquerda, bolsa à direita e acessórios nas laterais. */
+.look-canvas {
+   background: var(--surface);
+   border: 1px solid var(--border);
+   border-radius: var(--radius-lg);
+   padding: var(--space-md);
+   display: grid;
+   grid-template-columns: 64px 1fr 64px;
+   grid-template-rows: repeat(4, 1fr);
+   grid-template-areas:
+      "acc1  top     bag "
+      "acc2  top     bag "
+      "shoes bottom  acc3"
+      "shoes bottom  acc3";
+   gap: var(--space-sm);
+   aspect-ratio: 3 / 4;
+   margin-bottom: var(--space-md);
 }
 
-#build-view.tray-open {
-   padding-bottom: 140px;
-}
-
-.build-card {
-   cursor: pointer;
-}
-
-.build-card .build-check {
-   position: absolute;
-   top: 6px;
-   right: 6px;
-   width: 26px;
-   height: 26px;
-   border-radius: 50%;
-   background: rgba(0, 0, 0, 0.28);
-   color: transparent;
+/* quando o armário está vazio o quadro vira só uma caixa de aviso */
+.look-canvas.look-canvas-empty {
    display: flex;
    align-items: center;
    justify-content: center;
-   font-size: 15px;
-   font-weight: 700;
-   line-height: 1;
-   z-index: 1;
-   transition: all var(--duration-base) var(--ease);
+   aspect-ratio: auto;
 }
 
-.build-card.selected {
+.area-top    { grid-area: top; }
+.area-bottom { grid-area: bottom; }
+.area-shoes  { grid-area: shoes; }
+.area-bag    { grid-area: bag; }
+.area-acc1   { grid-area: acc1; }
+.area-acc2   { grid-area: acc2; }
+.area-acc3   { grid-area: acc3; }
+
+.look-slot {
+   border: none;
+   background: transparent;
+   padding: 0;
+   border-radius: var(--radius-sm);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   overflow: hidden;
+   min-width: 0;
+   min-height: 0;
+   cursor: pointer;
+}
+
+/* contain pra mostrar a peça inteira, como num flat lay, sem cortar */
+.look-slot.filled img {
+   width: 100%;
+   height: 100%;
+   object-fit: contain;
+}
+
+.look-slot.filled:active {
+   transform: scale(0.97);
+}
+
+.look-slot.empty {
+   border: 1px dashed var(--border);
+   background: color-mix(in srgb, var(--border) 22%, var(--surface));
+}
+
+.look-slot-hint {
+   font-size: var(--text-xs);
+   color: var(--text-muted);
+   text-align: center;
+   padding: 2px;
+}
+
+.build-actions {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: var(--space-sm);
+   margin-bottom: var(--space-md);
+}
+
+/* folha que sobe de baixo pra trocar a peça de um espaço */
+.picker-sheet {
+   position: fixed;
+   inset: 0;
+   z-index: 200;
+}
+
+.picker-backdrop {
+   position: absolute;
+   inset: 0;
+   background: rgba(0, 0, 0, 0.35);
+   opacity: 0;
+   transition: opacity var(--duration-base) var(--ease);
+}
+
+.picker-sheet.open .picker-backdrop {
+   opacity: 1;
+}
+
+.picker-panel {
+   position: absolute;
+   left: 50%;
+   bottom: 0;
+   transform: translateX(-50%) translateY(100%);
+   width: 100%;
+   max-width: 480px;
+   max-height: 70vh;
+   overflow-y: auto;
+   background: var(--surface);
+   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+   padding: var(--space-md);
+   padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom));
+   transition: transform var(--duration-slow) var(--ease);
+}
+
+.picker-sheet.open .picker-panel {
+   transform: translateX(-50%) translateY(0);
+}
+
+.picker-header {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   margin-bottom: var(--space-md);
+   font-weight: 600;
+   text-transform: capitalize;
+}
+
+.picker-close {
+   width: 32px;
+   height: 32px;
+   border-radius: 50%;
+   background: var(--bg);
+   border: none;
+   font-size: 18px;
+   line-height: 1;
+   color: var(--text-muted);
+}
+
+.picker-grid {
+   display: grid;
+   grid-template-columns: repeat(3, 1fr);
+   gap: var(--space-sm);
+}
+
+.picker-item {
+   border: 1px solid var(--border);
+   border-radius: var(--radius-md);
+   overflow: hidden;
+   background: var(--surface);
+   padding: 0;
+   aspect-ratio: 3 / 4;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+}
+
+.picker-item img {
+   width: 100%;
+   height: 100%;
+   object-fit: cover;
+}
+
+.picker-item.selected {
    border-color: var(--primary);
    box-shadow: 0 0 0 2px var(--primary);
 }
 
-.build-card.selected .build-check {
-   background: var(--primary);
-   color: #fff;
+.picker-clear {
+   background: var(--bg);
 }
 
-.build-card.selected img {
-   opacity: 0.92;
-}
-
-/* bandeja fixa com as peças escolhidas */
-.build-tray {
-   position: fixed;
-   bottom: var(--tab-height);
-   left: 50%;
-   transform: translateX(-50%);
-   width: 100%;
-   max-width: 480px;
-   background: var(--surface);
-   border-top: 1px solid var(--border);
-   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
-   padding: var(--space-sm) var(--space-md) var(--space-md);
-   z-index: 90;
-}
-
-.build-tray-items {
-   display: flex;
-   gap: var(--space-sm);
-   overflow-x: auto;
-   padding-bottom: var(--space-sm);
-   scrollbar-width: none;
-}
-
-.build-tray-items::-webkit-scrollbar {
-   display: none;
-}
-
-.build-tray-item {
-   position: relative;
-   flex-shrink: 0;
-}
-
-.build-tray-item img {
-   width: 52px;
-   height: 52px;
-   border-radius: var(--radius-sm);
-   object-fit: cover;
-   display: block;
-   border: 1px solid var(--border);
-}
-
-.build-tray-remove {
-   position: absolute;
-   top: -6px;
-   right: -6px;
-   width: 20px;
-   height: 20px;
-   border-radius: 50%;
-   background: var(--primary);
-   color: #fff;
-   border: 2px solid var(--surface);
-   font-size: 12px;
-   line-height: 1;
-   display: flex;
-   align-items: center;
-   justify-content: center;
-}
-
-.build-tray-save {
-   width: 100%;
+.picker-empty {
+   grid-column: 1 / -1;
+   text-align: center;
+   color: var(--text-muted);
+   font-size: var(--text-sm);
+   padding: var(--space-lg);
 }
 
 /* seletor de modo */
