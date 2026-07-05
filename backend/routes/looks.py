@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, timezone
 from dependencies import get_current_user
 from services.supabase_service import supabase
@@ -13,6 +13,10 @@ router = APIRouter(prefix="/looks", tags=["looks"])
 class GenerateLookRequest(BaseModel):
    mode:    str            = "casual"
    weather: Optional[dict] = None
+
+class CreateLookRequest(BaseModel):
+   clothes_ids: List[str]
+   mode:        str = "casual"
 
 @router.get("/count")
 async def count_saved_looks(user=Depends(get_current_user)):
@@ -72,6 +76,50 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
    # popula com os dados completos das peças
    clothes_map              = {c["id"]: c for c in clothes}
    look_data["clothes"]     = [clothes_map[id] for id in clothes_ids if id in clothes_map]
+
+   return look_data
+
+@router.post("/manual")
+async def create_manual_look(data: CreateLookRequest, user=Depends(get_current_user)):
+   if len(data.clothes_ids) < 2:
+      raise HTTPException(
+         status_code=400,
+         detail="Selecione pelo menos 2 peças para montar um look"
+      )
+
+   # valida que as peças existem e pertencem ao usuário
+   clothes_result = (
+      supabase.table("clothes")
+      .select("*")
+      .eq("user_id", user.id)
+      .in_("id", data.clothes_ids)
+      .execute()
+   )
+   clothes     = clothes_result.data
+   clothes_map = {c["id"]: c for c in clothes}
+
+   # preserva a ordem escolhida pelo usuário, descartando ids inválidos
+   ordered_ids = [cid for cid in data.clothes_ids if cid in clothes_map]
+
+   if len(ordered_ids) < 2:
+      raise HTTPException(
+         status_code=400,
+         detail="Selecione pelo menos 2 peças válidas do seu armário"
+      )
+
+   look = {
+      "user_id":     user.id,
+      "clothes_ids": ordered_ids,
+      "mode":        data.mode,
+      "saved":       True
+   }
+
+   result    = supabase.table("looks").insert(look).execute()
+   look_data = result.data[0]
+
+   await _track_wear(ordered_ids, user.id)
+
+   look_data["clothes"] = [clothes_map[id] for id in ordered_ids]
 
    return look_data
 

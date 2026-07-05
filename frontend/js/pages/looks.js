@@ -7,47 +7,273 @@ const LooksPage = {
    _hasMore:     false,
    _loading:     false,
 
+   // --- construtor manual ---
+   activeTab:    'build',        // 'build' | 'ai'
+   buildMode:    'casual',
+   buildFilter:  'all',
+   _buildClothes: [],
+   _selectedIds:  new Set(),
+
    render() {
       return `
          <div class="page">
             <div class="page-header">
                <h1 class="page-title">Looks</h1>
-               <p class="page-subtitle">Combinações criadas para você</p>
+               <p class="page-subtitle">Monte o seu ou deixe a IA sugerir</p>
             </div>
 
-            <div class="mode-bar">
-               <button class="mode-pill active" data-mode="casual">Casual</button>
-               <button class="mode-pill" data-mode="elegante">Elegante</button>
-               <button class="mode-pill" data-mode="trabalho">Trabalho</button>
-               <button class="mode-pill" data-mode="festa">Festa</button>
+            <div class="look-tabs">
+               <button class="look-tab active" data-tab="build">Montar eu mesmo</button>
+               <button class="look-tab" data-tab="ai">Gerar com IA</button>
             </div>
 
-            <button class="btn-primary" id="generate-btn">Gerar look</button>
+            <div id="build-view">
+               <div class="mode-bar" id="build-mode-bar">
+                  <button class="mode-pill active" data-bmode="casual">Casual</button>
+                  <button class="mode-pill" data-bmode="elegante">Elegante</button>
+                  <button class="mode-pill" data-bmode="trabalho">Trabalho</button>
+                  <button class="mode-pill" data-bmode="festa">Festa</button>
+               </div>
+               <div class="filter-bar hidden" id="build-filter"></div>
+               <div class="clothes-grid" id="build-grid"></div>
+            </div>
 
-            <div id="look-result" class="look-result hidden"></div>
+            <div id="ai-view" class="hidden">
+               <div class="mode-bar">
+                  <button class="mode-pill active" data-mode="casual">Casual</button>
+                  <button class="mode-pill" data-mode="elegante">Elegante</button>
+                  <button class="mode-pill" data-mode="trabalho">Trabalho</button>
+                  <button class="mode-pill" data-mode="festa">Festa</button>
+               </div>
+               <button class="btn-primary" id="generate-btn">Gerar look</button>
+               <div id="look-result" class="look-result hidden"></div>
+            </div>
+
             <div id="saved-looks" class="saved-looks"></div>
+         </div>
+
+         <div class="build-tray hidden" id="build-tray">
+            <div class="build-tray-items" id="build-tray-items"></div>
+            <button class="btn-primary build-tray-save" id="build-save">Salvar look</button>
          </div>
       `
    },
 
    async init() {
-      this.currentLook = null
-      this.activeMode  = 'casual'
-      this._savedLooks = []
-      this._offset     = 0
-      this._hasMore    = false
+      this.currentLook   = null
+      this.activeMode    = 'casual'
+      this.activeTab     = 'build'
+      this.buildMode     = 'casual'
+      this.buildFilter   = 'all'
+      this._savedLooks   = []
+      this._offset       = 0
+      this._hasMore      = false
+      this._buildClothes = []
+      this._selectedIds  = new Set()
 
-      document.querySelectorAll('.mode-pill').forEach(pill => {
+      // troca de abas (Montar / IA)
+      document.querySelectorAll('.look-tab').forEach(tab => {
+         tab.addEventListener('click', () => this.switchTab(tab.dataset.tab))
+      })
+
+      // modo do look manual
+      this.bindModeBar('#build-mode-bar', 'buildMode')
+
+      // modo do look da IA
+      document.querySelectorAll('#ai-view .mode-pill').forEach(pill => {
          pill.addEventListener('click', () => {
             this.activeMode = pill.dataset.mode
-            document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'))
+            document.querySelectorAll('#ai-view .mode-pill').forEach(p => p.classList.remove('active'))
             pill.classList.add('active')
          })
       })
 
       document.getElementById('generate-btn').addEventListener('click', () => this.generate())
-      await this.loadSavedLooks()
+      document.getElementById('build-save').addEventListener('click', () => this.saveManualLook())
+
+      await Promise.all([this.loadBuildClothes(), this.loadSavedLooks()])
    },
+
+   bindModeBar(barSelector, stateKey) {
+      document.querySelectorAll(`${barSelector} .mode-pill`).forEach(pill => {
+         pill.addEventListener('click', () => {
+            this[stateKey] = pill.dataset.bmode
+            document.querySelectorAll(`${barSelector} .mode-pill`).forEach(p => p.classList.remove('active'))
+            pill.classList.add('active')
+         })
+      })
+   },
+
+   switchTab(tab) {
+      this.activeTab = tab
+      document.querySelectorAll('.look-tab').forEach(t => {
+         t.classList.toggle('active', t.dataset.tab === tab)
+      })
+      document.getElementById('build-view').classList.toggle('hidden', tab !== 'build')
+      document.getElementById('ai-view').classList.toggle('hidden', tab !== 'ai')
+      // a bandeja só faz sentido no modo Montar
+      this.updateTray()
+   },
+
+   // ============ CONSTRUTOR MANUAL ============
+
+   async loadBuildClothes() {
+      const grid = document.getElementById('build-grid')
+      grid.innerHTML = Array(6).fill(0).map(() => `
+         <div class="skeleton-card">
+            <div class="skeleton" style="width:100%;aspect-ratio:3/4"></div>
+         </div>
+      `).join('')
+
+      const response = await API.get('/clothes/?limit=100&offset=0')
+      if (!response) return
+
+      this._buildClothes = response.ok ? await response.json() : []
+      this.renderBuildFilters()
+      this.renderBuildGrid()
+   },
+
+   renderBuildFilters() {
+      const bar = document.getElementById('build-filter')
+
+      if (this._buildClothes.length === 0) {
+         bar.classList.add('hidden')
+         return
+      }
+
+      const types = ['all', ...new Set(this._buildClothes.map(c => c.type).filter(Boolean))]
+
+      bar.innerHTML = types.map(type => `
+         <button class="filter-pill ${type === this.buildFilter ? 'active' : ''}" data-bfilter="${type}">
+            ${type === 'all' ? 'Todas' : type}
+         </button>
+      `).join('')
+
+      bar.classList.remove('hidden')
+
+      bar.querySelectorAll('.filter-pill').forEach(pill => {
+         pill.addEventListener('click', () => {
+            this.buildFilter = pill.dataset.bfilter
+            bar.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'))
+            pill.classList.add('active')
+            this.renderBuildGrid()
+         })
+      })
+   },
+
+   renderBuildGrid() {
+      const grid = document.getElementById('build-grid')
+
+      if (this._buildClothes.length === 0) {
+         grid.innerHTML = `
+            <div class="empty-state">
+               <p>Seu armário está vazio</p>
+               <span>Adicione peças no Armário para montar seus looks</span>
+            </div>
+         `
+         return
+      }
+
+      const list = this.buildFilter === 'all'
+         ? this._buildClothes
+         : this._buildClothes.filter(c => c.type === this.buildFilter)
+
+      grid.innerHTML = list.map(cloth => {
+         const selected = this._selectedIds.has(cloth.id)
+         return `
+            <div class="cloth-card build-card ${selected ? 'selected' : ''}" data-id="${cloth.id}">
+               <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
+               <div class="build-check">✓</div>
+               <div class="cloth-info">
+                  <span class="cloth-type">${cloth.type || 'Peça'}</span>
+                  ${cloth.color ? `<span class="cloth-color">${cloth.color}</span>` : ''}
+               </div>
+            </div>
+         `
+      }).join('')
+
+      grid.querySelectorAll('.build-card').forEach(card => {
+         card.addEventListener('click', () => this.toggleSelect(card.dataset.id))
+      })
+   },
+
+   toggleSelect(clothId) {
+      if (this._selectedIds.has(clothId)) {
+         this._selectedIds.delete(clothId)
+      } else {
+         this._selectedIds.add(clothId)
+      }
+
+      const card = document.querySelector(`.build-card[data-id="${clothId}"]`)
+      if (card) card.classList.toggle('selected', this._selectedIds.has(clothId))
+
+      this.updateTray()
+   },
+
+   updateTray() {
+      const tray = document.getElementById('build-tray')
+      if (!tray) return
+
+      const show = this.activeTab === 'build' && this._selectedIds.size > 0
+      tray.classList.toggle('hidden', !show)
+      document.getElementById('build-view').classList.toggle('tray-open', show)
+
+      if (!show) return
+
+      const selected = this._buildClothes.filter(c => this._selectedIds.has(c.id))
+      const itemsEl  = document.getElementById('build-tray-items')
+
+      itemsEl.innerHTML = selected.map(c => `
+         <div class="build-tray-item" data-id="${c.id}">
+            <img src="${c.image_url}" alt="${c.type || ''}">
+            <button class="build-tray-remove" data-id="${c.id}" aria-label="Tirar peça">×</button>
+         </div>
+      `).join('')
+
+      itemsEl.querySelectorAll('.build-tray-remove').forEach(btn => {
+         btn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this.toggleSelect(btn.dataset.id)
+         })
+      })
+
+      const saveBtn = document.getElementById('build-save')
+      saveBtn.textContent = `Salvar look (${this._selectedIds.size})`
+   },
+
+   async saveManualLook() {
+      if (this._selectedIds.size < 2) {
+         showToast('Escolha pelo menos 2 peças', 'error')
+         return
+      }
+
+      const btn = document.getElementById('build-save')
+      btn.disabled    = true
+      btn.textContent = 'Salvando...'
+
+      const response = await API.post('/looks/manual', {
+         clothes_ids: [...this._selectedIds],
+         mode:        this.buildMode
+      })
+
+      if (response?.ok) {
+         Analytics.saveLook(this.buildMode)
+         this._selectedIds.clear()
+         this.renderBuildGrid()
+         this.updateTray()
+         await this.loadSavedLooks()
+         showToast('Look montado e salvo!')
+      } else {
+         const err = response ? await response.json().catch(() => ({})) : {}
+         showToast(err.detail || 'Erro ao salvar o look', 'error')
+      }
+
+      btn.disabled = false
+      this.updateTray()
+      if (this._selectedIds.size === 0) btn.textContent = 'Salvar look'
+   },
+
+   // ============ GERADOR POR IA ============
 
    async generate() {
       const btn    = document.getElementById('generate-btn')
@@ -135,6 +361,8 @@ const LooksPage = {
       }
    },
 
+   // ============ LOOKS SALVOS ============
+
    async loadSavedLooks(append = false) {
       if (this._loading && append) return
       this._loading = true
@@ -199,7 +427,7 @@ const LooksPage = {
          container.innerHTML = `
             <div class="empty-state" style="grid-column:unset;margin-top:var(--space-xl)">
                <p>Nenhum look salvo ainda</p>
-               <span>Gere um look acima e salve os que você mais gostar</span>
+               <span>Monte um look acima ou gere com a IA e salve os que mais gostar</span>
             </div>
          `
          return
