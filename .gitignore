@@ -8,9 +8,6 @@ venv/
 # Node (se usar ferramentas auxiliares)
 node_modules/
 
-# Frontend config local
-frontend/js/config.example.js
-
 # Sistema
 .DS_Store
 Thumbs.db
