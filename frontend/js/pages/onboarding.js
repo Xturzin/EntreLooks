@@ -59,7 +59,7 @@ const OnboardingPage = {
                         </div>
                         <div>
                            <p class="feature-title">Aprende com você</p>
-                           <p class="feature-desc">Quanto mais usa, mais acertado fica</p>
+                           <p class="feature-desc">Quanto mais usa, mais sua cara fica</p>
                         </div>
                      </div>
                   </div>
