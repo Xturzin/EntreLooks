@@ -121,7 +121,30 @@ function stopMsgRotation(elementId, originalText) {
    if (el) el.textContent = originalText
 }
 
+// Volta do login social: o Supabase devolve o token (ou um erro) no fim da URL,
+// depois do #. A gente pega o token, guarda e limpa a URL antes de seguir.
+function captureOAuthRedirect() {
+   const hash = window.location.hash
+   if (!hash || (!hash.includes('access_token=') && !hash.includes('error='))) return
+
+   const params = new URLSearchParams(hash.substring(1))
+   const token  = params.get('access_token')
+   const error  = params.get('error_description') || params.get('error')
+
+   // tira o token da URL pra não ficar exposto nem atrapalhar o roteamento por hash
+   history.replaceState(null, '', window.location.pathname)
+
+   if (token) {
+      Auth.setToken(token)
+   } else if (error) {
+      // login cancelado ou com falha: avisa assim que a tela montar
+      setTimeout(() => showToast('Não foi possível entrar com o Google. Tente de novo.', 'error'), 300)
+   }
+}
+
 // inicializa verificando autenticação
+captureOAuthRedirect()
+
 if (Auth.isAuthenticated()) {
    showApp()
 } else {
