@@ -14,6 +14,10 @@ class GenerateLookRequest(BaseModel):
    mode:    str            = "casual"
    weather: Optional[dict] = None
 
+class PlanRequest(BaseModel):
+   look_id: str
+   date:    str   # formato YYYY-MM-DD
+
 class CreateLookRequest(BaseModel):
    clothes_ids: List[str]
    mode:        str = "casual"
@@ -327,3 +331,59 @@ async def list_saved_looks(
       look["clothes"] = [clothes_map[id] for id in look.get("clothes_ids", []) if id in clothes_map]
 
    return looks
+
+@router.post("/plan")
+async def plan_look(data: PlanRequest, user=Depends(get_current_user)):
+   # confere que o look é do próprio usuário antes de agendar
+   look = (
+      supabase.table("looks")
+      .select("id")
+      .eq("id", data.look_id)
+      .eq("user_id", user.id)
+      .execute()
+   )
+   if not look.data:
+      raise HTTPException(status_code=404, detail="Look não encontrado")
+
+   # um look por dia: se já tinha algo agendado nessa data, substitui
+   row = {"user_id": user.id, "look_id": data.look_id, "date": data.date}
+   result = supabase.table("planned_looks").upsert(row, on_conflict="user_id,date").execute()
+   return result.data[0]
+
+@router.get("/planned")
+async def list_planned(user=Depends(get_current_user)):
+   planned = (
+      supabase.table("planned_looks")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("date")
+      .execute()
+   )
+   rows = planned.data
+
+   if not rows:
+      return []
+
+   # busca os looks agendados e popula com as peças, de uma vez só
+   look_ids  = list({r["look_id"] for r in rows})
+   looks_res = supabase.table("looks").select("*").in_("id", look_ids).execute()
+
+   clothes_ids = list({cid for lk in looks_res.data for cid in lk.get("clothes_ids", [])})
+   clothes_map = {}
+   if clothes_ids:
+      cres        = supabase.table("clothes").select("*").in_("id", clothes_ids).execute()
+      clothes_map = {c["id"]: c for c in cres.data}
+
+   for lk in looks_res.data:
+      lk["clothes"] = [clothes_map[i] for i in lk.get("clothes_ids", []) if i in clothes_map]
+
+   looks_map = {lk["id"]: lk for lk in looks_res.data}
+   for r in rows:
+      r["look"] = looks_map.get(r["look_id"])
+
+   return rows
+
+@router.delete("/planned/{plan_id}")
+async def delete_planned(plan_id: str, user=Depends(get_current_user)):
+   supabase.table("planned_looks").delete().eq("id", plan_id).eq("user_id", user.id).execute()
+   return {"deleted": True}

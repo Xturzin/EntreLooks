@@ -85,6 +85,11 @@
    transform: scale(0.95);
 }
 
+/* peça de corpo inteiro (vestido, macacão) ocupa o centro todo, cima e baixo */
+.look-slot.is-full {
+   grid-row: 1 / 5;
+}
+
 .look-slot.empty {
    border: 1.5px dashed #D5DECC;
    background: transparent;
@@ -402,4 +407,64 @@
 
 .load-more-looks {
    margin-top: var(--space-md);
+}
+
+/* agendar um look, dentro da folha de detalhe */
+.detail-plan {
+   display: flex;
+   flex-direction: column;
+   gap: var(--space-sm);
+   margin-top: var(--space-md);
+   padding-top: var(--space-md);
+   border-top: 1px solid var(--border);
+}
+
+.detail-plan input[type="date"] {
+   width: 100%;
+   padding: 14px 18px;
+   border: 1.5px solid var(--border);
+   border-radius: var(--radius-full);
+   font-size: var(--text-base);
+   font-family: var(--font);
+   background: var(--bg);
+   color: var(--text);
+   outline: none;
+}
+
+/* aba Planejar: lista dos looks por dia */
+.planned-grid {
+   display: grid;
+   grid-template-columns: 1fr 1fr;
+   gap: var(--space-sm);
+}
+
+.planned-card {
+   position: relative;
+   background: var(--surface);
+   border-radius: var(--radius-md);
+   padding: 10px;
+   box-shadow: var(--shadow-sm);
+}
+
+.planned-date {
+   font-family: var(--font-display);
+   font-size: var(--text-sm);
+   font-weight: 700;
+   color: var(--text);
+   text-transform: capitalize;
+   margin-bottom: var(--space-sm);
+}
+
+.planned-thumbs {
+   display: grid;
+   grid-template-columns: repeat(2, 1fr);
+   gap: 6px;
+}
+
+.planned-thumbs img {
+   width: 100%;
+   aspect-ratio: 1;
+   object-fit: cover;
+   background: var(--bg);
+   border-radius: 12px;
 }

@@ -19,13 +19,15 @@ const ZONE_KEYWORDS = {
    bag:       ['bolsa', 'mochila', 'carteira', 'clutch', 'pochete', 'necessaire'],
    accessory: ['colar', 'anel', 'brinco', 'pulseira', 'óculos', 'oculos', 'chapéu', 'chapeu', 'cinto', 'lenço', 'lenco', 'relógio', 'relogio', 'boné', 'bone', 'gorro', 'tiara', 'presilha', 'bracelete', 'corrente', 'choker'],
    bottom:    ['calça', 'calca', 'saia', 'short', 'bermuda', 'legging', 'pantalona', 'jeans', 'calção', 'calcao'],
-   top:       ['vestido', 'macacão', 'macacao', 'macaquinho', 'jardineira', 'camiseta', 'camisa', 'blusa', 'top', 'cropped', 'regata', 'moletom', 'casaco', 'jaqueta', 'blazer', 'suéter', 'sueter', 'tricô', 'tricot', 'cardigã', 'cardiga', 'colete', 'body', 'bata'],
+   // peças de corpo inteiro: ocupam o centro sozinhas, sem parte de baixo separada
+   full:      ['vestido', 'macacão', 'macacao', 'macaquinho', 'jardineira'],
+   top:       ['camiseta', 'camisa', 'blusa', 'top', 'cropped', 'regata', 'moletom', 'casaco', 'jaqueta', 'blazer', 'suéter', 'sueter', 'tricô', 'tricot', 'cardigã', 'cardiga', 'colete', 'body', 'bata'],
 }
 
 // Ordem de teste importa: calçado e acessório antes de top pra não cair no genérico.
 function zoneOf(type) {
    const t = (type || '').toLowerCase()
-   for (const zone of ['shoes', 'bag', 'accessory', 'bottom', 'top']) {
+   for (const zone of ['shoes', 'bag', 'accessory', 'bottom', 'full', 'top']) {
       if (ZONE_KEYWORDS[zone].some(word => t.includes(word))) return zone
    }
    // sem correspondência, trata como parte de cima
@@ -57,8 +59,9 @@ const LooksPage = {
             </div>
 
             <div class="look-tabs">
-               <button class="look-tab active" data-tab="build">Montar eu mesmo</button>
-               <button class="look-tab" data-tab="ai">Gerar com IA</button>
+               <button class="look-tab active" data-tab="build">Montar</button>
+               <button class="look-tab" data-tab="ai">Gerar IA</button>
+               <button class="look-tab" data-tab="plan">Planejar</button>
             </div>
 
             <div id="build-view">
@@ -88,6 +91,10 @@ const LooksPage = {
                <div id="look-result" class="look-result hidden"></div>
             </div>
 
+            <div id="plan-view" class="hidden">
+               <div id="planned-list"></div>
+            </div>
+
             <div id="saved-looks" class="saved-looks"></div>
          </div>
 
@@ -99,6 +106,21 @@ const LooksPage = {
                   <button class="picker-close" id="picker-close" aria-label="Fechar">×</button>
                </div>
                <div class="picker-grid" id="picker-grid"></div>
+            </div>
+         </div>
+
+         <div class="picker-sheet hidden" id="look-detail">
+            <div class="picker-backdrop" id="detail-backdrop"></div>
+            <div class="picker-panel">
+               <div class="picker-header">
+                  <span id="detail-title">Look</span>
+                  <button class="picker-close" id="detail-close" aria-label="Fechar">×</button>
+               </div>
+               <div id="detail-body"></div>
+               <div class="detail-plan">
+                  <input type="date" id="plan-date">
+                  <button class="btn-primary" id="plan-btn">Planejar pra esse dia</button>
+               </div>
             </div>
          </div>
       `
@@ -115,8 +137,10 @@ const LooksPage = {
       this._buildClothes = []
       this._slots        = {}
       this._pickerSlot   = null
+      this._planned      = []
+      this._detailLookId = null
 
-      // troca de abas (Montar / IA)
+      // troca de abas (Montar / IA / Planejar)
       document.querySelectorAll('.look-tab').forEach(tab => {
          tab.addEventListener('click', () => this.switchTab(tab.dataset.tab))
       })
@@ -132,6 +156,13 @@ const LooksPage = {
       // fechar a folha de seleção tocando fora ou no X
       document.getElementById('picker-close').addEventListener('click', () => this.closePicker())
       document.getElementById('picker-backdrop').addEventListener('click', () => this.closePicker())
+
+      // fechar o detalhe do look salvo
+      document.getElementById('detail-close').addEventListener('click', () => this.closeLookDetail())
+      document.getElementById('detail-backdrop').addEventListener('click', () => this.closeLookDetail())
+
+      // agendar o look aberto no detalhe pra uma data
+      document.getElementById('plan-btn').addEventListener('click', () => this.planLook())
 
       await Promise.all([this.loadBuildClothes(), this.loadSavedLooks()])
    },
@@ -153,6 +184,9 @@ const LooksPage = {
       })
       document.getElementById('build-view').classList.toggle('hidden', tab !== 'build')
       document.getElementById('ai-view').classList.toggle('hidden', tab !== 'ai')
+      document.getElementById('plan-view').classList.toggle('hidden', tab !== 'plan')
+
+      if (tab === 'plan') this.loadPlanned()
    },
 
    // ============ CONSTRUTOR MANUAL (COLAGEM) ============
@@ -187,12 +221,32 @@ const LooksPage = {
       return this._buildClothes.filter(c => zoneOf(c.type) === zone)
    },
 
+   // o que cabe em cada espaço. A parte de cima aceita também peça de corpo inteiro (vestido).
+   piecesForSlot(slot) {
+      if (slot.key === 'top') {
+         return this._buildClothes.filter(c => ['top', 'full'].includes(zoneOf(c.type)))
+      }
+      return this.piecesInZone(slot.zone)
+   },
+
+   // a parte de cima está com uma peça de corpo inteiro? (aí não usa a parte de baixo)
+   topIsFull() {
+      const cloth = this._buildClothes.find(c => c.id === this._slots.top)
+      return cloth ? zoneOf(cloth.type) === 'full' : false
+   },
+
    // sorteia uma peça pra cada espaço, sem repetir a mesma peça em dois lugares
    shuffleLook() {
       const used = new Set()
 
       LOOK_SLOTS.forEach(slot => {
-         const options = this.piecesInZone(slot.zone).filter(c => !used.has(c.id))
+         // com vestido/macacão na parte de cima, a parte de baixo fica de fora
+         if (slot.key === 'bottom' && this.topIsFull()) {
+            this._slots.bottom = null
+            return
+         }
+
+         const options = this.piecesForSlot(slot).filter(c => !used.has(c.id))
          if (options.length === 0) {
             this._slots[slot.key] = null
             return
@@ -209,21 +263,27 @@ const LooksPage = {
       const canvas = document.getElementById('look-canvas')
       canvas.classList.remove('look-canvas-empty')
 
-      const byId = Object.fromEntries(this._buildClothes.map(c => [c.id, c]))
+      const byId    = Object.fromEntries(this._buildClothes.map(c => [c.id, c]))
+      const fullTop = this.topIsFull()
 
       canvas.innerHTML = LOOK_SLOTS.map(slot => {
-         const cloth = this._slots[slot.key] ? byId[this._slots[slot.key]] : null
+         // com vestido no centro, o espaço da parte de baixo nem é desenhado
+         if (slot.key === 'bottom' && fullTop) return ''
+
+         const cloth   = this._slots[slot.key] ? byId[this._slots[slot.key]] : null
+         // a peça de corpo inteiro estica o espaço de cima pra ocupar o centro todo
+         const fullMod = (slot.key === 'top' && fullTop) ? ' is-full' : ''
 
          if (cloth) {
             return `
-               <button class="look-slot filled area-${slot.area}" data-slot="${slot.key}">
+               <button class="look-slot filled area-${slot.area}${fullMod}" data-slot="${slot.key}">
                   <img src="${cloth.image_url}" alt="">
                </button>
             `
          }
 
          return `
-            <button class="look-slot empty area-${slot.area}" data-slot="${slot.key}">
+            <button class="look-slot empty area-${slot.area}${fullMod}" data-slot="${slot.key}">
                <span class="look-slot-hint">${slot.hint}</span>
             </button>
          `
@@ -237,7 +297,7 @@ const LooksPage = {
    // abre a folha de baixo com as peças que cabem naquele espaço
    openPicker(slotKey) {
       const slot   = LOOK_SLOTS.find(s => s.key === slotKey)
-      const pieces = this.piecesInZone(slot.zone)
+      const pieces = this.piecesForSlot(slot)
       this._pickerSlot = slotKey
 
       document.getElementById('picker-title').textContent = `Escolher ${slot.hint}`
@@ -279,9 +339,163 @@ const LooksPage = {
       setTimeout(() => sheet.classList.add('hidden'), 250)
    },
 
+   // abre o look salvo em tamanho grande, mostrando todas as peças
+   openLookDetail(lookId) {
+      // pode vir da lista de salvos ou de um dia planejado
+      let look = this._savedLooks.find(l => l.id === lookId)
+      if (!look) {
+         const p = (this._planned || []).find(pl => pl.look && pl.look.id === lookId)
+         look = p ? p.look : null
+      }
+      if (!look) return
+
+      this._detailLookId = lookId
+
+      const clothes = look.clothes || []
+      document.getElementById('detail-title').textContent = `Look ${look.mode}`
+      document.getElementById('detail-body').innerHTML = `
+         <div class="look-clothes">
+            ${clothes.map(c => `
+               <div class="look-item">
+                  <img src="${c.image_url}" alt="${c.type || ''}">
+                  <span>${c.type || ''}</span>
+               </div>
+            `).join('')}
+         </div>
+      `
+
+      // deixa o seletor de data já no dia de hoje, sem permitir agendar no passado
+      const today     = this._todayStr()
+      const dateInput = document.getElementById('plan-date')
+      dateInput.min   = today
+      dateInput.value = today
+
+      const sheet = document.getElementById('look-detail')
+      sheet.classList.remove('hidden')
+      requestAnimationFrame(() => sheet.classList.add('open'))
+   },
+
+   closeLookDetail() {
+      const sheet = document.getElementById('look-detail')
+      sheet.classList.remove('open')
+      setTimeout(() => sheet.classList.add('hidden'), 250)
+   },
+
+   // ============ PLANEJAR ============
+
+   _todayStr() {
+      const d = new Date()
+      const p = (n) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+   },
+
+   _formatDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number)
+      const date  = new Date(y, m - 1, d)
+      const dias  = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
+      const meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+      return `${dias[date.getDay()]}, ${d} de ${meses[m - 1]}`
+   },
+
+   async planLook() {
+      const date = document.getElementById('plan-date').value
+      if (!date || !this._detailLookId) return
+
+      const btn       = document.getElementById('plan-btn')
+      btn.disabled    = true
+      btn.textContent = 'Planejando...'
+
+      const response = await API.post('/looks/plan', { look_id: this._detailLookId, date })
+
+      btn.disabled    = false
+      btn.textContent = 'Planejar pra esse dia'
+
+      if (response?.ok) {
+         showToast('Look planejado')
+         this.closeLookDetail()
+         await this.loadPlanned()
+      } else {
+         showToast('Erro ao planejar. Tente de novo.', 'error')
+      }
+   },
+
+   async loadPlanned() {
+      const response = await API.get('/looks/planned')
+      if (!response?.ok) return
+      this._planned = await response.json()
+      this.renderPlanned()
+   },
+
+   renderPlanned() {
+      const container = document.getElementById('planned-list')
+      const planned   = this._planned || []
+
+      if (planned.length === 0) {
+         container.innerHTML = `
+            <div class="empty-state" style="grid-column:unset">
+               <p>Nenhum look planejado</p>
+               <span>Abra um look salvo aqui embaixo e escolha um dia pra usar ele</span>
+            </div>
+         `
+         return
+      }
+
+      const today    = this._todayStr()
+      const upcoming = planned.filter(p => p.date >= today)
+      const past     = planned.filter(p => p.date < today).reverse()
+
+      const card = (p) => {
+         const look    = p.look || {}
+         const clothes = (look.clothes || []).slice(0, 4)
+         return `
+            <div class="planned-card" data-look="${look.id || ''}">
+               <button class="cloth-delete-btn planned-remove" data-plan="${p.id}" aria-label="Tirar do dia">×</button>
+               <div class="planned-date">${this._formatDate(p.date)}</div>
+               <div class="planned-thumbs">
+                  ${clothes.map(c => `<img src="${c.image_url}" alt="">`).join('')}
+               </div>
+            </div>
+         `
+      }
+
+      container.innerHTML = `
+         ${upcoming.length ? `<h2 class="section-title">Próximos</h2><div class="planned-grid">${upcoming.map(card).join('')}</div>` : ''}
+         ${past.length ? `<h2 class="section-title" style="margin-top:var(--space-lg)">Já usados</h2><div class="planned-grid">${past.map(card).join('')}</div>` : ''}
+      `
+
+      container.querySelectorAll('.planned-remove').forEach(btn => {
+         btn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this.removePlanned(btn.dataset.plan)
+         })
+      })
+
+      container.querySelectorAll('.planned-card').forEach(cardEl => {
+         cardEl.addEventListener('click', () => this.openLookDetail(cardEl.dataset.look))
+      })
+   },
+
+   async removePlanned(planId) {
+      const response = await API.delete(`/looks/planned/${planId}`)
+      if (!response?.ok) {
+         showToast('Erro ao remover', 'error')
+         return
+      }
+      this._planned = this._planned.filter(p => p.id !== planId)
+      this.renderPlanned()
+      showToast('Removido do dia')
+   },
+
    async saveManualLook() {
-      // pega as peças da colagem na ordem dos espaços, sem repetir
-      const ids = [...new Set(LOOK_SLOTS.map(s => this._slots[s.key]).filter(Boolean))]
+      // pega as peças da colagem na ordem dos espaços, sem repetir.
+      // se tem vestido no centro, a parte de baixo é ignorada mesmo que tenha sobrado ali.
+      const fullTop = this.topIsFull()
+      const ids = [...new Set(
+         LOOK_SLOTS
+            .filter(s => !(s.key === 'bottom' && fullTop))
+            .map(s => this._slots[s.key])
+            .filter(Boolean)
+      )]
 
       if (ids.length < 2) {
          showToast('Monte um look com pelo menos 2 peças', 'error')
@@ -478,7 +692,7 @@ const LooksPage = {
          <h2 class="section-title">Looks salvos</h2>
          <div class="saved-grid">
             ${looks.map(look => `
-               <div class="saved-look-card">
+               <div class="saved-look-card" data-id="${look.id}">
                   <button class="cloth-delete-btn" data-id="${look.id}" aria-label="Remover look">×</button>
                   <div class="saved-look-clothes">
                      ${(look.clothes || []).slice(0, 4).map(c => `
@@ -497,6 +711,11 @@ const LooksPage = {
             e.stopPropagation()
             this.deleteLook(btn.dataset.id, btn)
          })
+      })
+
+      // tocar no card abre o look inteiro (o botão de excluir corta o clique antes)
+      container.querySelectorAll('.saved-look-card').forEach(card => {
+         card.addEventListener('click', () => this.openLookDetail(card.dataset.id))
       })
 
       if (this._hasMore) {
