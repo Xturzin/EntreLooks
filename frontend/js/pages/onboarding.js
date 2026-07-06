@@ -109,8 +109,13 @@ const OnboardingPage = {
       const dots    = document.querySelectorAll('.onboarding-dot')
       const nextBtn = document.getElementById('onboarding-next')
 
-      slides[this.currentSlide].classList.add('exit')
-      setTimeout(() => slides[this.currentSlide].classList.remove('active', 'exit'), 300)
+      // guarda o slide que está saindo antes de trocar a variável. Sem isso, o
+      // timeout abaixo leria o índice já atualizado e apagaria o slide que acabou
+      // de entrar, fazendo o conteúdo sumir depois da animação.
+      const leaving = this.currentSlide
+
+      slides[leaving].classList.add('exit')
+      setTimeout(() => slides[leaving].classList.remove('active', 'exit'), 300)
 
       this.currentSlide = index
 
