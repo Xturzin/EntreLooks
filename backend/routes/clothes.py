@@ -1,4 +1,6 @@
 import uuid
+from typing import Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from dependencies import get_current_user
 from services.image_service import remove_background, to_base64
@@ -9,6 +11,14 @@ from services.rate_limiter import rate_limiter
 router = APIRouter(prefix="/clothes", tags=["clothes"])
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+# campos que o usuário pode corrigir quando a IA erra a classificação da peça
+class ClothUpdate(BaseModel):
+   type:     Optional[str] = None
+   color:    Optional[str] = None
+   style:    Optional[str] = None
+   occasion: Optional[str] = None
 
 @router.post("/")
 async def upload_clothing(
@@ -113,6 +123,31 @@ async def delete_clothing(cloth_id: str, user=Depends(get_current_user)):
    supabase.table("clothes").delete().eq("id", cloth_id).eq("user_id", user.id).execute()
 
    return {"deleted": True}
+
+@router.patch("/{cloth_id}")
+async def update_clothing(
+   cloth_id: str,
+   data: ClothUpdate,
+   user=Depends(get_current_user)
+):
+   # só atualiza o que veio preenchido, pra não apagar campo sem querer
+   updates = {k: v for k, v in data.model_dump().items() if v is not None}
+
+   if not updates:
+      raise HTTPException(status_code=400, detail="Nada para atualizar")
+
+   result = (
+      supabase.table("clothes")
+      .update(updates)
+      .eq("id", cloth_id)
+      .eq("user_id", user.id)
+      .execute()
+   )
+
+   if not result.data:
+      raise HTTPException(status_code=404, detail="Peça não encontrada")
+
+   return result.data[0]
 
 @router.get("/")
 async def list_clothes(

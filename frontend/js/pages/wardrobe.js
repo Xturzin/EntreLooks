@@ -1,3 +1,29 @@
+// Opções fixas pra corrigir a peça quando a IA erra. Tipo e cor são listas mais
+// longas, estilo e ocasião seguem o vocabulário que a própria IA usa pra classificar.
+// As cores batem com o COLOR_MAP da tela de Estilo, pra bolinha de cor sair certa lá.
+const EDIT_OPTIONS = {
+   type: [
+      'camiseta', 'camisa', 'blusa', 'cropped', 'regata', 'vestido', 'saia',
+      'calça', 'short', 'bermuda', 'jaqueta', 'casaco', 'blazer', 'moletom',
+      'tricô', 'macacão', 'tênis', 'sandália', 'sapato', 'bota', 'chinelo',
+      'salto', 'bolsa', 'mochila', 'colar', 'anel', 'brinco', 'pulseira',
+      'cinto', 'óculos', 'boné', 'chapéu'
+   ],
+   color: [
+      'preto', 'branco', 'cinza', 'bege', 'marrom', 'azul', 'navy', 'vermelho',
+      'rosa', 'verde', 'amarelo', 'laranja', 'roxo', 'vinho', 'caramelo'
+   ],
+   style:    ['casual', 'elegante', 'esportivo', 'formal', 'streetwear'],
+   occasion: ['dia a dia', 'trabalho', 'festa', 'academia', 'praia'],
+}
+
+const EDIT_LABELS = {
+   type:     'Tipo',
+   color:    'Cor',
+   style:    'Estilo',
+   occasion: 'Ocasião',
+}
+
 const WardrobePage = {
    selectedFile:  null,
    clothes:       [],
@@ -6,6 +32,7 @@ const WardrobePage = {
    _limit:        50,
    _hasMore:      false,
    _loading:      false,
+   _editingId:    null,   // peça aberta na folha de edição
 
    render() {
       return `
@@ -40,6 +67,18 @@ const WardrobePage = {
             <div class="filter-bar hidden" id="filter-bar"></div>
             <div class="clothes-grid" id="clothes-grid"></div>
          </div>
+
+         <div class="picker-sheet hidden" id="edit-sheet">
+            <div class="picker-backdrop" id="edit-backdrop"></div>
+            <div class="picker-panel">
+               <div class="picker-header">
+                  <span>Editar peça</span>
+                  <button class="picker-close" id="edit-close" aria-label="Fechar">×</button>
+               </div>
+               <div id="edit-fields"></div>
+               <button class="btn-primary edit-save" id="edit-save">Salvar</button>
+            </div>
+         </div>
       `
    },
 
@@ -49,7 +88,14 @@ const WardrobePage = {
       this._offset      = 0
       this._hasMore     = false
       this.clothes      = []
+      this._editingId   = null
       this.bindUploadEvents()
+
+      // folha de edição: fechar tocando fora ou no X, e salvar
+      document.getElementById('edit-close').addEventListener('click', () => this.closeEdit())
+      document.getElementById('edit-backdrop').addEventListener('click', () => this.closeEdit())
+      document.getElementById('edit-save').addEventListener('click', () => this.saveEdit())
+
       await Promise.all([this.loadStats(), this.loadClothes()])
    },
 
@@ -313,6 +359,78 @@ async loadStats() {
       showToast('Peça removida do armário')
    },
 
+   openEdit(clothId) {
+      const cloth = this.clothes.find(c => c.id === clothId)
+      if (!cloth) return
+      this._editingId = clothId
+
+      // monta um grupo de opções por campo, já marcando o valor atual da peça
+      const fields = document.getElementById('edit-fields')
+      fields.innerHTML = Object.keys(EDIT_OPTIONS).map(field => `
+         <div class="edit-group">
+            <p class="edit-group-label">${EDIT_LABELS[field]}</p>
+            <div class="edit-options" data-field="${field}">
+               ${EDIT_OPTIONS[field].map(opt => `
+                  <button class="opt-chip ${cloth[field] === opt ? 'active' : ''}" data-value="${opt}">${opt}</button>
+               `).join('')}
+            </div>
+         </div>
+      `).join('')
+
+      // em cada campo só uma opção pode ficar marcada
+      fields.querySelectorAll('.edit-options').forEach(group => {
+         group.querySelectorAll('.opt-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+               group.querySelectorAll('.opt-chip').forEach(c => c.classList.remove('active'))
+               chip.classList.add('active')
+            })
+         })
+      })
+
+      const sheet = document.getElementById('edit-sheet')
+      sheet.classList.remove('hidden')
+      requestAnimationFrame(() => sheet.classList.add('open'))
+   },
+
+   closeEdit() {
+      const sheet = document.getElementById('edit-sheet')
+      sheet.classList.remove('open')
+      setTimeout(() => sheet.classList.add('hidden'), 250)
+      this._editingId = null
+   },
+
+   async saveEdit() {
+      if (!this._editingId) return
+
+      // pega a opção marcada de cada campo
+      const updates = {}
+      document.querySelectorAll('#edit-fields .edit-options').forEach(group => {
+         const active = group.querySelector('.opt-chip.active')
+         if (active) updates[group.dataset.field] = active.dataset.value
+      })
+
+      const btn = document.getElementById('edit-save')
+      btn.disabled    = true
+      btn.textContent = 'Salvando...'
+
+      const response = await API.patch(`/clothes/${this._editingId}`, updates)
+
+      if (response?.ok) {
+         const updated = await response.json()
+         // troca a peça na lista local, sem recarregar o armário todo
+         this.clothes = this.clothes.map(c => c.id === updated.id ? updated : c)
+         this.renderFilters()
+         this.applyFilter()
+         showToast('Peça atualizada')
+         this.closeEdit()
+      } else {
+         showToast('Erro ao salvar. Tente de novo.', 'error')
+      }
+
+      btn.disabled    = false
+      btn.textContent = 'Salvar'
+   },
+
    renderGrid(clothes) {
       const grid = document.getElementById('clothes-grid')
 
@@ -331,7 +449,7 @@ async loadStats() {
          : ''
 
       grid.innerHTML = clothes.map(cloth => `
-         <div class="cloth-card">
+         <div class="cloth-card" data-id="${cloth.id}">
             <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
             <button class="cloth-delete-btn" data-id="${cloth.id}" aria-label="Remover peça">×</button>
             <div class="cloth-info">
@@ -346,6 +464,11 @@ async loadStats() {
             e.stopPropagation()
             this.deleteCloth(btn.dataset.id, btn)
          })
+      })
+
+      // tocar na peça abre a edição (o botão de excluir já corta o clique antes)
+      grid.querySelectorAll('.cloth-card').forEach(card => {
+         card.addEventListener('click', () => this.openEdit(card.dataset.id))
       })
 
       if (this._hasMore) {

@@ -337,3 +337,42 @@
    overflow: hidden;
    background: var(--surface);
 }
+
+/* folha de edição da peça (usa a mesma folha de baixo do picker, em looks.css) */
+.edit-group {
+   margin-bottom: var(--space-md);
+}
+
+.edit-group-label {
+   font-size: var(--text-sm);
+   font-weight: 700;
+   color: var(--text);
+   margin-bottom: var(--space-sm);
+}
+
+.edit-options {
+   display: flex;
+   flex-wrap: wrap;
+   gap: var(--space-sm);
+}
+
+.opt-chip {
+   padding: 8px 15px;
+   border-radius: var(--radius-full);
+   border: none;
+   font-size: var(--text-sm);
+   font-family: var(--font);
+   font-weight: 600;
+   color: var(--text-muted);
+   background: var(--bg);
+   text-transform: capitalize;
+}
+
+.opt-chip.active {
+   background: var(--primary);
+   color: white;
+}
+
+.edit-save {
+   margin-top: var(--space-sm);
+}

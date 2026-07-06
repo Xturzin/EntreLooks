@@ -50,8 +50,10 @@ const API = {
       return this.request(endpoint, options)
    },
 
-   patch(endpoint) {
-      return this.request(endpoint, { method: 'PATCH' })
+   patch(endpoint, body = null) {
+      const options = { method: 'PATCH' }
+      if (body) options.body = JSON.stringify(body)
+      return this.request(endpoint, options)
    },
 
    delete(endpoint) {
