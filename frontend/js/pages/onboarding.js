@@ -130,7 +130,6 @@ const OnboardingPage = {
 
    finish(skipped = false) {
       localStorage.setItem('el_onboarded', 'true')
-      Analytics.onboardingFinished(skipped)
 
       const overlay            = document.getElementById('onboarding-overlay')
       overlay.style.transition = 'opacity 0.3s ease'

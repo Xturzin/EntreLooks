@@ -158,8 +158,6 @@ const HomePage = {
          const payload = { mode: this.autoMode }
          if (this.weather) payload.weather = this.weather
 
-         Analytics.generateLook(this.autoMode, !!this.weather)
-
          const response = await API.post('/looks/generate', payload)
 
          if (!response) return
@@ -217,7 +215,6 @@ const HomePage = {
       btn.disabled    = true
       btn.textContent = 'Ok...'
 
-      Analytics.rejectLook(this.autoMode)
       await API.post(`/looks/${lookId}/reject`, {})
       await this.quickGenerate()
    },
@@ -232,7 +229,6 @@ const HomePage = {
       if (response?.ok) {
          btn.textContent = 'Salvo!'
          showToast('Look salvo com sucesso')
-         Analytics.saveLook(this.autoMode)
       } else {
          btn.disabled    = false
          btn.textContent = 'Salvar'

@@ -31,7 +31,6 @@ function navigate(page) {
 
    // hash routing: permite Vercel distinguir tabs + navegação por URL
    history.replaceState(null, '', `#${page}`)
-   Analytics.pageView(page)
 }
 
 function showAuthPage() {

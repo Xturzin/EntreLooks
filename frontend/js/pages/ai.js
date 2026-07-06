@@ -74,8 +74,6 @@ const AIPage = {
       const loadingId = this.addBubble('ai', 'Pensando...', true)
       this.history.push({ role: 'user', content: message })
 
-      Analytics.aiChatMessage()
-
       // limita histórico: mantém apenas os últimos 10 pares (20 mensagens)
       if (this.history.length > 20) {
          this.history = this.history.slice(-20)

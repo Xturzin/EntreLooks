@@ -512,7 +512,6 @@ const LooksPage = {
       })
 
       if (response?.ok) {
-         Analytics.saveLook(this.buildMode)
          await this.loadSavedLooks()
          showToast('Look salvo!')
       } else {
@@ -533,8 +532,6 @@ const LooksPage = {
       btn.disabled = true
       startMsgRotation('generate-btn')
       result.classList.add('hidden')
-
-      Analytics.generateLook(this.activeMode, false)
 
       const response = await API.post('/looks/generate', { mode: this.activeMode })
 
@@ -588,7 +585,6 @@ const LooksPage = {
       btn.disabled    = true
       btn.textContent = 'Ok...'
 
-      Analytics.rejectLook(this.activeMode)
       await API.post(`/looks/${lookId}/reject`, {})
       await this.generate()
    },
@@ -603,7 +599,6 @@ const LooksPage = {
       if (response?.ok) {
          btn.textContent = 'Salvo!'
          showToast('Look salvo')
-         Analytics.saveLook(this.currentLook?.mode || this.activeMode)
          await this.loadSavedLooks()
       } else {
          btn.disabled    = false
