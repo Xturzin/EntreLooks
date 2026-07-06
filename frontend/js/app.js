@@ -142,6 +142,11 @@ function captureOAuthRedirect() {
    }
 }
 
+// liga os botões da barra de baixo à troca de tela
+document.querySelectorAll('#bottom-nav .tab-item').forEach(tab => {
+   tab.addEventListener('click', () => navigate(tab.dataset.page))
+})
+
 // inicializa verificando autenticação
 captureOAuthRedirect()
 
