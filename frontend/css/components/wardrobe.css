@@ -187,9 +187,11 @@
 .cloth-card img {
    width: 100%;
    aspect-ratio: 3 / 4;
-   object-fit: cover;
+   object-fit: contain;
    display: block;
-   background: var(--bg);
+   padding: var(--space-sm);
+   /* sombra que segue o contorno da peça (peças novas saem com fundo transparente) */
+   filter: drop-shadow(0 8px 10px rgba(37, 46, 32, 0.16));
 }
 
 .cloth-info {

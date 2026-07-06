@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from dependencies import get_current_user
-from services.image_service import remove_background, to_png, to_base64
+from services.image_service import remove_background, to_png, flatten_white, to_base64
 from services.openai_service import categorize_clothing
 from services.supabase_service import supabase
 from services.rate_limiter import rate_limiter
@@ -40,9 +40,9 @@ async def upload_clothing(
    # senão, faz o recorte aqui como plano B (retorna original se rembg indisponível).
    processed = to_png(image_bytes) if bg_removed else remove_background(image_bytes)
 
-   # categoriza com IA
+   # categoriza com IA usando a peça em fundo branco (transparência atrapalha a visão)
    try:
-      categories = await categorize_clothing(to_base64(processed))
+      categories = await categorize_clothing(to_base64(flatten_white(processed)))
    except Exception as e:
       import logging
       logging.getLogger("entrelooks").warning(f"Categorização falhou: {type(e).__name__}: {e}")

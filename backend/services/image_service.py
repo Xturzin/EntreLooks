@@ -54,10 +54,26 @@ def remove_background(image_bytes: bytes) -> bytes:
          return image_bytes
 
 def to_png(image_bytes: bytes) -> bytes:
-   """Só garante que a imagem está em PNG, sem tirar fundo. Usado quando o recorte
-   já foi feito no navegador do usuário e o servidor só precisa normalizar e guardar."""
+   """Normaliza pra PNG mantendo a transparência. Usado quando o recorte já foi
+   feito no navegador; o servidor só padroniza o formato e guarda a peça recortada."""
    try:
-      return _to_png(image_bytes)
+      img    = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+      output = io.BytesIO()
+      img.save(output, format="PNG")
+      return output.getvalue()
+   except Exception:
+      return image_bytes
+
+def flatten_white(image_bytes: bytes) -> bytes:
+   """Coloca a peça num fundo branco. Serve só pra mandar pra IA identificar, porque
+   fundo transparente pode confundir a visão do modelo (às vezes vira preto)."""
+   try:
+      img        = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+      background = Image.new("RGBA", img.size, (255, 255, 255, 255))
+      background.paste(img, mask=img.split()[3])
+      output = io.BytesIO()
+      background.convert("RGB").save(output, format="PNG")
+      return output.getvalue()
    except Exception:
       return image_bytes
 

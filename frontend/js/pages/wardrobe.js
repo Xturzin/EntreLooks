@@ -83,8 +83,9 @@ const WardrobePage = {
    },
 
    async init() {
-      this.selectedFile = null
-      this.activeFilter = 'all'
+      this.selectedFile  = null
+      this.processedFile = null
+      this.activeFilter  = 'all'
       this._offset      = 0
       this._hasMore     = false
       this.clothes      = []
@@ -165,14 +166,38 @@ async loadStats() {
       document.getElementById('upload-cancel').addEventListener('click', () => this.resetUpload())
    },
 
-   showPreview(file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-         document.getElementById('preview-img').src = e.target.result
-         document.getElementById('upload-preview').classList.remove('hidden')
-         document.getElementById('upload-status').classList.add('hidden')
+   // mostra o resultado já recortado e enquadrado, pra pessoa conferir antes de salvar
+   async showPreview(file) {
+      const preview = document.getElementById('upload-preview')
+      const imgEl   = document.getElementById('preview-img')
+      const status  = document.getElementById('upload-status')
+      const submit  = document.getElementById('upload-submit')
+
+      preview.classList.remove('hidden')
+      status.className   = 'upload-status'
+      status.textContent = 'Deixando a peça limpa...'
+      status.classList.remove('hidden')
+      submit.disabled = true
+
+      // enquanto processa, já mostra a foto crua pra tela não ficar vazia
+      imgEl.src = URL.createObjectURL(file)
+
+      const resized = await this.resizeImage(file)
+      let processed = null
+      try { processed = await this.processPhoto(resized) } catch (e) {}
+
+      if (processed) {
+         this.processedFile      = processed
+         this.processedBgRemoved = true
+      } else {
+         // plano B: guarda a foto original e o servidor recorta no envio
+         this.processedFile      = resized
+         this.processedBgRemoved = false
       }
-      reader.readAsDataURL(file)
+
+      imgEl.src = URL.createObjectURL(this.processedFile)
+      status.classList.add('hidden')
+      submit.disabled = false
    },
 
    async resizeImage(file, maxPx = 1200) {
@@ -201,76 +226,92 @@ async loadStats() {
       })
    },
 
-   // recorta o fundo no próprio navegador e compõe a peça num fundo branco,
-   // pra ficar aquele padrão limpo de catálogo. A biblioteca é baixada sob
-   // demanda (uma vez por aparelho, depois fica em cache). Se algo falhar,
-   // devolve null e o servidor faz o recorte no lugar.
-   async removeBackgroundLocal(file) {
+   // recorta o fundo no navegador, apara o excesso em volta e centraliza a peça
+   // num quadro 3:4 transparente, pra toda roupa ficar no mesmo enquadramento de
+   // catálogo. A biblioteca é baixada sob demanda (uma vez por aparelho, depois
+   // fica em cache). Se algo falhar, devolve null e o servidor faz o recorte.
+   async processPhoto(file) {
       const mod = await import('https://esm.sh/@imgly/background-removal@1')
       const removeBackground = mod.removeBackground || mod.default
       const cutout = await removeBackground(file, { output: { format: 'image/png' } })
-      return await this.pasteOnWhite(cutout)
+      return await this.trimAndCenter(cutout)
    },
 
-   pasteOnWhite(blob) {
-      return new Promise((resolve) => {
+   loadImage(blob) {
+      return new Promise((resolve, reject) => {
          const img = new Image()
          const url = URL.createObjectURL(blob)
-         img.onload = () => {
-            URL.revokeObjectURL(url)
-            const canvas  = document.createElement('canvas')
-            canvas.width  = img.width
-            canvas.height = img.height
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = '#ffffff'
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            ctx.drawImage(img, 0, 0)
-            canvas.toBlob(
-               (b) => resolve(b ? new File([b], 'peca.png', { type: 'image/png' }) : null),
-               'image/png'
-            )
-         }
-         img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+         img.onload  = () => { URL.revokeObjectURL(url); resolve(img) }
+         img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('falha ao carregar imagem')) }
          img.src = url
       })
    },
 
+   // acha os limites da peça (pixels não transparentes), corta rente e desenha
+   // centralizado num quadro 3:4 com uma folga em volta
+   async trimAndCenter(blob) {
+      const img = await this.loadImage(blob)
+
+      const src  = document.createElement('canvas')
+      src.width  = img.width
+      src.height = img.height
+      const sctx = src.getContext('2d')
+      sctx.drawImage(img, 0, 0)
+      const data = sctx.getImageData(0, 0, src.width, src.height).data
+
+      let minX = src.width, minY = src.height, maxX = 0, maxY = 0, found = false
+      for (let y = 0; y < src.height; y++) {
+         for (let x = 0; x < src.width; x++) {
+            if (data[(y * src.width + x) * 4 + 3] > 12) {
+               found = true
+               if (x < minX) minX = x
+               if (x > maxX) maxX = x
+               if (y < minY) minY = y
+               if (y > maxY) maxY = y
+            }
+         }
+      }
+      if (!found) return null
+
+      const cropW = maxX - minX + 1
+      const cropH = maxY - minY + 1
+
+      const TW = 750, TH = 1000, pad = 0.08
+      const out  = document.createElement('canvas')
+      out.width  = TW
+      out.height = TH
+      const octx  = out.getContext('2d')
+      const scale = Math.min((TW * (1 - 2 * pad)) / cropW, (TH * (1 - 2 * pad)) / cropH)
+      const dw = cropW * scale, dh = cropH * scale
+      octx.drawImage(src, minX, minY, cropW, cropH, (TW - dw) / 2, (TH - dh) / 2, dw, dh)
+
+      return await new Promise((resolve) => {
+         out.toBlob(
+            (b) => resolve(b ? new File([b], 'peca.png', { type: 'image/png' }) : null),
+            'image/png'
+         )
+      })
+   },
+
    async upload() {
-      if (!this.selectedFile) return
+      // a imagem já foi recortada e enquadrada no showPreview
+      if (!this.processedFile) return
 
       const btn     = document.getElementById('upload-submit')
       const trigger = document.getElementById('upload-trigger')
       const status  = document.getElementById('upload-status')
 
       btn.disabled       = true
-      btn.textContent    = 'Processando...'
+      btn.textContent    = 'Salvando...'
       trigger.disabled   = true
       status.className   = 'upload-status'
-      status.textContent = 'Removendo fundo e identificando a peça...'
+      status.textContent = 'Identificando a peça...'
       status.classList.remove('hidden')
 
       try {
-         const resized = await this.resizeImage(this.selectedFile)
-
-         // tenta recortar no próprio aparelho (borda melhor e tira o peso do servidor).
-         // se não rolar no celular, manda a foto original e o servidor recorta (plano B).
-         status.textContent = 'Deixando a peça limpa...'
-         let fileToSend = resized
-         let bgRemoved  = false
-         try {
-            const clean = await this.removeBackgroundLocal(resized)
-            if (clean) {
-               fileToSend = clean
-               bgRemoved  = true
-            }
-         } catch (e) {
-            // sem drama: cai pro recorte do servidor
-         }
-
-         status.textContent = 'Identificando a peça...'
          const formData = new FormData()
-         formData.append('file', fileToSend)
-         formData.append('bg_removed', bgRemoved ? 'true' : 'false')
+         formData.append('file', this.processedFile)
+         formData.append('bg_removed', this.processedBgRemoved ? 'true' : 'false')
 
          const response = await API.post('/clothes/', formData)
 
@@ -297,7 +338,8 @@ async loadStats() {
    },
 
    resetUpload() {
-      this.selectedFile = null
+      this.selectedFile  = null
+      this.processedFile = null
       document.getElementById('cloth-input').value     = ''
       document.getElementById('upload-preview').classList.add('hidden')
       document.getElementById('upload-submit').disabled    = false
