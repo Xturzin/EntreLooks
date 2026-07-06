@@ -7,6 +7,18 @@ const routes = {
    style:    StylePage,
 }
 
+// nome que a pessoa escolheu (fica na conta). Usado nas saudações e no chat.
+let USER_NAME = null
+
+function setUserName(name) {
+   USER_NAME = name || null
+}
+
+// só o primeiro nome, pra saudação ficar leve ("Bom dia, Ana")
+function greetingName() {
+   return USER_NAME ? USER_NAME.trim().split(' ')[0] : null
+}
+
 function navigate(page) {
    if (!routes[page]) return
 
@@ -31,6 +43,12 @@ function showAuthPage() {
 
 async function showApp() {
    document.getElementById('auth-view').classList.add('hidden')
+
+   // pega o nome guardado na conta pra saudação já sair certa
+   const meRes = await API.get('/auth/me')
+   // se o token venceu, o 401 já mandou pro login; não segue mostrando o app
+   if (!Auth.isAuthenticated()) return
+   if (meRes?.ok) setUserName((await meRes.json()).name)
 
    // restaura tab da URL se existir
    const hashPage = window.location.hash.replace('#', '')

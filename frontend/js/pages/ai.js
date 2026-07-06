@@ -2,6 +2,10 @@ const AIPage = {
    history: [],
 
    render() {
+      // cumprimenta pelo nome se a pessoa tiver dito à Dora no começo
+      const name = greetingName()
+      const hi   = name ? `Oi, ${name}! ` : 'Oi! '
+
       return `
          <div class="page ai-page">
             <div class="page-header">
@@ -10,7 +14,7 @@ const AIPage = {
             </div>
             <div class="chat-messages" id="chat-messages">
                <div class="chat-bubble ai">
-                  Oi! Sou a Dora, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
+                  ${hi}Sou a Dora, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
                </div>
             </div>
          </div>

@@ -116,17 +116,20 @@ Formato obrigatório:
    except (json.JSONDecodeError, AttributeError):
       raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
 
-async def chat_with_stylist(message: str, history: list, clothes: list) -> str:
+async def chat_with_stylist(message: str, history: list, clothes: list, name: str = None) -> str:
    if clothes:
       items            = [f"{c.get('type', 'peça')} {c.get('color', '')}".strip() for c in clothes]
       wardrobe_summary = ", ".join(items)
    else:
       wardrobe_summary = "guarda-roupa ainda vazio"
 
+   # se a pessoa disse o nome no onboarding, a Dora chama por ele de vez em quando
+   name_line = f"\nO nome da pessoa é {name}. Chame pelo nome de vez em quando, de forma natural, sem exagerar." if name else ""
+
    system_prompt = f"""Você é Dora, uma estilista pessoal brasileira descontraída e prática.
 Você conhece o guarda-roupa do usuário e ajuda a montar looks, dar dicas de moda e responder dúvidas de estilo.
 Seja direta, simpática e use linguagem natural brasileira. Evite respostas longas demais.
-Quando sugerir um look, mencione as peças pelo tipo e cor.
+Quando sugerir um look, mencione as peças pelo tipo e cor.{name_line}
 
 Guarda-roupa do usuário: {wardrobe_summary}"""
 

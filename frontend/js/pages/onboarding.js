@@ -136,12 +136,11 @@ const OnboardingPage = {
       overlay.style.transition = 'opacity 0.3s ease'
       overlay.style.opacity    = '0'
 
+      // depois do onboarding a Dora se apresenta e pergunta o nome, e é ela que
+      // leva a pessoa pro armário no fim
       setTimeout(() => {
          overlay.remove()
-         navigate('wardrobe')
-         if (!skipped) {
-            setTimeout(() => document.getElementById('upload-trigger')?.click(), 150)
-         }
+         DoraWelcome.show()
       }, 300)
    }
 }

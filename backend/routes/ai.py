@@ -37,8 +37,12 @@ async def chat(data: ChatRequest, user=Depends(get_current_user)):
 
    history = [{"role": m.role, "content": m.content} for m in data.history]
 
+   # nome que a pessoa escolheu no onboarding, pra Dora chamar pelo nome
+   meta = getattr(user, "user_metadata", None) or {}
+   name = meta.get("name")
+
    try:
-      reply = await chat_with_stylist(data.message, history, clothes)
+      reply = await chat_with_stylist(data.message, history, clothes, name)
       return {"reply": reply}
    except Exception as e:
       logger.error(f"Erro no chat_with_stylist: {type(e).__name__}: {e}")

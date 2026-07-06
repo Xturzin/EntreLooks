@@ -123,7 +123,10 @@ const HomePage = {
       }
 
       this.autoMode = mode
-      document.getElementById('greeting-label').textContent   = greeting
+
+      // se a pessoa disse o nome pra Dora, a saudação fica pessoal ("Boa tarde, Ana")
+      const name = greetingName()
+      document.getElementById('greeting-label').textContent   = name ? `${greeting}, ${name}` : greeting
       document.getElementById('quick-mode-label').textContent = `look ${mode}`
    },
 
