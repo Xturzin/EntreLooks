@@ -100,6 +100,49 @@
    background: var(--surface);
 }
 
+/* campo de senha com o olhinho pra revelar */
+.password-field {
+   position: relative;
+}
+
+/* espaço à direita pra senha não passar por baixo do botão */
+.password-field input {
+   padding-right: 52px;
+}
+
+.password-toggle {
+   position: absolute;
+   right: 8px;
+   top: 50%;
+   transform: translateY(-50%);
+   width: 36px;
+   height: 36px;
+   border: none;
+   background: transparent;
+   color: var(--text-muted);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   cursor: pointer;
+}
+
+.password-toggle:active {
+   color: var(--primary);
+}
+
+/* por padrão mostra o olho aberto (senha escondida). ao revelar, troca pro olho cortado */
+.password-toggle .icon-off {
+   display: none;
+}
+
+.password-toggle.revealed .icon-on {
+   display: none;
+}
+
+.password-toggle.revealed .icon-off {
+   display: block;
+}
+
 .auth-error {
    font-size: var(--text-sm);
    font-weight: 600;
