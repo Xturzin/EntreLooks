@@ -201,6 +201,40 @@ async loadStats() {
       })
    },
 
+   // recorta o fundo no próprio navegador e compõe a peça num fundo branco,
+   // pra ficar aquele padrão limpo de catálogo. A biblioteca é baixada sob
+   // demanda (uma vez por aparelho, depois fica em cache). Se algo falhar,
+   // devolve null e o servidor faz o recorte no lugar.
+   async removeBackgroundLocal(file) {
+      const mod = await import('https://esm.sh/@imgly/background-removal@1')
+      const removeBackground = mod.removeBackground || mod.default
+      const cutout = await removeBackground(file, { output: { format: 'image/png' } })
+      return await this.pasteOnWhite(cutout)
+   },
+
+   pasteOnWhite(blob) {
+      return new Promise((resolve) => {
+         const img = new Image()
+         const url = URL.createObjectURL(blob)
+         img.onload = () => {
+            URL.revokeObjectURL(url)
+            const canvas  = document.createElement('canvas')
+            canvas.width  = img.width
+            canvas.height = img.height
+            const ctx = canvas.getContext('2d')
+            ctx.fillStyle = '#ffffff'
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+            ctx.drawImage(img, 0, 0)
+            canvas.toBlob(
+               (b) => resolve(b ? new File([b], 'peca.png', { type: 'image/png' }) : null),
+               'image/png'
+            )
+         }
+         img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
+         img.src = url
+      })
+   },
+
    async upload() {
       if (!this.selectedFile) return
 
@@ -216,9 +250,27 @@ async loadStats() {
       status.classList.remove('hidden')
 
       try {
-         const resized  = await this.resizeImage(this.selectedFile)
+         const resized = await this.resizeImage(this.selectedFile)
+
+         // tenta recortar no próprio aparelho (borda melhor e tira o peso do servidor).
+         // se não rolar no celular, manda a foto original e o servidor recorta (plano B).
+         status.textContent = 'Deixando a peça limpa...'
+         let fileToSend = resized
+         let bgRemoved  = false
+         try {
+            const clean = await this.removeBackgroundLocal(resized)
+            if (clean) {
+               fileToSend = clean
+               bgRemoved  = true
+            }
+         } catch (e) {
+            // sem drama: cai pro recorte do servidor
+         }
+
+         status.textContent = 'Identificando a peça...'
          const formData = new FormData()
-         formData.append('file', resized)
+         formData.append('file', fileToSend)
+         formData.append('bg_removed', bgRemoved ? 'true' : 'false')
 
          const response = await API.post('/clothes/', formData)
 

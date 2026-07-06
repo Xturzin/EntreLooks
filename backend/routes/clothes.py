@@ -1,9 +1,9 @@
 import uuid
 from typing import Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from dependencies import get_current_user
-from services.image_service import remove_background, to_base64
+from services.image_service import remove_background, to_png, to_base64
 from services.openai_service import categorize_clothing
 from services.supabase_service import supabase
 from services.rate_limiter import rate_limiter
@@ -23,6 +23,7 @@ class ClothUpdate(BaseModel):
 @router.post("/")
 async def upload_clothing(
    file: UploadFile = File(...),
+   bg_removed: bool = Form(False),
    user=Depends(get_current_user)
 ):
    rate_limiter.check(user.id, limit=20, window=3600)  # 20 uploads/hora
@@ -35,8 +36,9 @@ async def upload_clothing(
    if len(image_bytes) > MAX_FILE_SIZE:
       raise HTTPException(status_code=400, detail="Imagem muito grande. Máximo 10MB.")
 
-   # remove fundo (retorna original se rembg indisponível)
-   processed = remove_background(image_bytes)
+   # se o navegador já recortou (bg_removed), o servidor só normaliza pra PNG.
+   # senão, faz o recorte aqui como plano B (retorna original se rembg indisponível).
+   processed = to_png(image_bytes) if bg_removed else remove_background(image_bytes)
 
    # categoriza com IA
    try:

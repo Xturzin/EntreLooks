@@ -53,5 +53,13 @@ def remove_background(image_bytes: bytes) -> bytes:
       except Exception:
          return image_bytes
 
+def to_png(image_bytes: bytes) -> bytes:
+   """Só garante que a imagem está em PNG, sem tirar fundo. Usado quando o recorte
+   já foi feito no navegador do usuário e o servidor só precisa normalizar e guardar."""
+   try:
+      return _to_png(image_bytes)
+   except Exception:
+      return image_bytes
+
 def to_base64(image_bytes: bytes) -> str:
    return base64.b64encode(image_bytes).decode("utf-8")
