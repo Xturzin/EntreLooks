@@ -18,6 +18,7 @@ Thumbs.db
 # IDE
 .vscode/settings.json
 .idea/
+.vscode/
 
 # Build / cache
 dist/
