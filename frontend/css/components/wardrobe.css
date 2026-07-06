@@ -6,16 +6,28 @@
 .upload-trigger {
    width: 100%;
    padding: var(--space-lg);
-   border: 2px dashed var(--border);
+   border: 2px dashed #C9D6C0;
    border-radius: var(--radius-lg);
    display: flex;
-   flex-direction: column;
+   flex-direction: row;
    align-items: center;
-   gap: var(--space-sm);
+   gap: var(--space-md);
    color: var(--text-muted);
    font-size: var(--text-sm);
+   font-weight: 600;
    font-family: var(--font);
-   transition: border-color 0.2s, color 0.2s;
+   background: rgba(255, 255, 255, 0.55);
+}
+
+.upload-trigger svg {
+   width: 48px;
+   height: 48px;
+   padding: 12px;
+   border-radius: 50%;
+   background: var(--primary);
+   stroke: white;
+   flex-shrink: 0;
+   box-shadow: var(--shadow-sm);
 }
 
 .upload-trigger:active {
@@ -28,35 +40,71 @@
    flex-direction: column;
    gap: var(--space-md);
    margin-bottom: var(--space-md);
+   background: var(--tint-green);
+   border-radius: var(--radius-lg);
+   padding: var(--space-md);
+   animation: pageEnter 0.35s var(--ease-spring) both;
 }
 
 .upload-preview img {
    width: 100%;
-   max-height: 360px;
+   max-height: 320px;
    object-fit: contain;
    border-radius: var(--radius-md);
    background: var(--surface);
-   border: 1px solid var(--border);
+   box-shadow: var(--shadow-sm);
 }
 
 .upload-status {
-   text-align: center;
-   padding: var(--space-md);
+   display: flex;
+   align-items: center;
+   gap: var(--space-sm);
+   text-align: left;
+   padding: 13px var(--space-md);
    font-size: var(--text-sm);
-   color: var(--text-muted);
+   font-weight: 600;
+   color: var(--success);
    border-radius: var(--radius-md);
-   background: var(--surface);
+   background: var(--success-bg);
    margin-bottom: var(--space-md);
 }
 
+.upload-status::before {
+   content: '';
+   width: 18px;
+   height: 18px;
+   border-radius: 50%;
+   border: 2.5px solid #C9D6C0;
+   border-top-color: var(--primary);
+   flex-shrink: 0;
+   animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+   to { transform: rotate(360deg); }
+}
+
 .upload-status.success {
-   color: #2F855A;
-   background: #F0FFF4;
+   color: var(--success);
+   background: var(--success-bg);
+}
+
+.upload-status.success::before {
+   content: '';
+   border: none;
+   background: var(--primary);
+   animation: none;
 }
 
 .upload-status.error {
-   color: #C53030;
-   background: #FFF5F5;
+   color: var(--error);
+   background: var(--error-bg);
+}
+
+.upload-status.error::before {
+   border: none;
+   background: var(--accent);
+   animation: none;
 }
 
 /* filtros */
@@ -75,21 +123,22 @@
 
 .filter-pill {
    flex-shrink: 0;
-   padding: 6px 14px;
+   padding: 9px 17px;
    border-radius: var(--radius-full);
-   border: 1px solid var(--border);
+   border: none;
    font-size: var(--text-sm);
    font-family: var(--font);
+   font-weight: 600;
    color: var(--text-muted);
    background: var(--surface);
-   transition: all 0.2s;
+   box-shadow: var(--shadow-xs);
    text-transform: capitalize;
 }
 
 .filter-pill.active {
-   background: var(--primary);
-   border-color: var(--primary);
+   background: var(--primary-dark);
    color: white;
+   box-shadow: var(--shadow-sm);
 }
 
 /* grid */
@@ -103,19 +152,18 @@
    background: var(--surface);
    border-radius: var(--radius-md);
    overflow: hidden;
-   border: 1px solid var(--border);
-   box-shadow: var(--shadow-xs);
+   box-shadow: var(--shadow-sm);
    position: relative;
 }
 
 .cloth-delete-btn {
    position: absolute;
-   top: 6px;
-   right: 6px;
+   top: 8px;
+   right: 8px;
    width: 26px;
    height: 26px;
    border-radius: 50%;
-   background: rgba(0, 0, 0, 0.52);
+   background: rgba(37, 46, 32, 0.5);
    color: #fff;
    border: none;
    font-size: 16px;
@@ -129,11 +177,11 @@
 }
 
 .cloth-delete-btn:active {
-   background: rgba(197, 48, 48, 0.85);
+   background: var(--error);
 }
 
 .cloth-card:active {
-   box-shadow: none;
+   box-shadow: var(--shadow-xs);
 }
 
 .cloth-card img {
@@ -141,10 +189,11 @@
    aspect-ratio: 3 / 4;
    object-fit: cover;
    display: block;
+   background: var(--bg);
 }
 
 .cloth-info {
-   padding: var(--space-sm);
+   padding: 10px 14px 12px;
    display: flex;
    flex-direction: column;
    gap: 2px;
@@ -152,7 +201,7 @@
 
 .cloth-type {
    font-size: var(--text-sm);
-   font-weight: 600;
+   font-weight: 700;
    color: var(--text);
    text-transform: capitalize;
 }
@@ -169,11 +218,15 @@
    text-align: center;
    padding: var(--space-xl) var(--space-md);
    color: var(--text-muted);
+   background: var(--surface);
+   border-radius: var(--radius-lg);
 }
 
 .empty-state p {
-   font-size: var(--text-base);
-   font-weight: 500;
+   font-family: var(--font-display);
+   font-size: var(--text-lg);
+   font-weight: 700;
+   color: var(--text);
    margin-bottom: var(--space-xs);
 }
 
@@ -185,14 +238,13 @@
 .btn-secondary {
    width: 100%;
    padding: 14px;
-   background: var(--bg);
-   color: var(--text);
-   border: 1px solid var(--border);
-   border-radius: var(--radius-sm);
+   background: var(--surface);
+   color: var(--primary);
+   border: 1.5px solid #CBD8C4;
+   border-radius: var(--radius-full);
    font-size: var(--text-base);
-   font-weight: 500;
+   font-weight: 700;
    font-family: var(--font);
-   transition: background 0.2s;
 }
 
 /* inteligência do armário */
@@ -201,11 +253,10 @@
 }
 
 .wardrobe-stats-title {
-   font-size: var(--text-xs);
+   font-family: var(--font-display);
+   font-size: var(--text-sm);
    font-weight: 700;
-   text-transform: uppercase;
-   letter-spacing: 0.8px;
-   color: var(--text-muted);
+   color: var(--text);
    margin-bottom: var(--space-sm);
 }
 
@@ -218,22 +269,24 @@
 
 .stats-card {
    background: var(--surface);
-   border: 1px solid var(--border);
    border-radius: var(--radius-md);
    padding: var(--space-md);
-   text-align: center;
+   text-align: left;
+   box-shadow: var(--shadow-sm);
 }
 
 .stats-card-number {
+   font-family: var(--font-display);
    font-size: 26px;
    font-weight: 800;
-   letter-spacing: -1px;
+   letter-spacing: -0.02em;
+   color: var(--success);
 }
 
 .stats-card-label {
    font-size: var(--text-xs);
    color: var(--text-muted);
-   margin-top: 2px;
+   margin-top: 3px;
 }
 
 .mini-grid {
@@ -246,8 +299,9 @@
 .mini-card {
    border-radius: var(--radius-sm);
    overflow: hidden;
-   border: 1px solid var(--border);
    position: relative;
+   background: var(--surface);
+   box-shadow: var(--shadow-xs);
 }
 
 .mini-card img {
@@ -259,15 +313,16 @@
 
 .mini-card-badge {
    position: absolute;
-   bottom: 0;
-   left: 0;
-   right: 0;
-   background: rgba(0,0,0,0.6);
+   bottom: 6px;
+   right: 6px;
+   left: auto;
+   background: var(--text);
    color: white;
-   font-size: 9px;
+   font-size: 9.5px;
    font-weight: 700;
    text-align: center;
-   padding: 3px 2px;
+   padding: 2px 7px;
+   border-radius: var(--radius-full);
 }
 
 .wardrobe-divider {
@@ -280,5 +335,5 @@
 .skeleton-card {
    border-radius: var(--radius-md);
    overflow: hidden;
-   border: 1px solid var(--border);
+   background: var(--surface);
 }

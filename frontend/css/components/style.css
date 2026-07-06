@@ -4,18 +4,28 @@
 
 /* resumo IA */
 .style-summary {
-   background: var(--primary);
-   color: white;
+   background: var(--surface);
    border-radius: var(--radius-lg);
    padding: var(--space-lg);
    margin-bottom: var(--space-lg);
-   font-size: var(--text-sm);
-   line-height: 1.6;
+   font-size: var(--text-base);
+   line-height: var(--leading-relaxed);
+   box-shadow: var(--shadow-md);
+   position: relative;
+}
+
+.style-summary::before {
+   content: 'a Dora resume:';
+   display: block;
+   font-family: var(--font-display);
+   font-size: var(--text-xs);
+   font-weight: 700;
+   color: var(--accent-deep);
+   margin-bottom: var(--space-sm);
 }
 
 .style-summary-placeholder {
-   background: var(--surface);
-   border: 1px dashed var(--border);
+   background: var(--tint-green);
    border-radius: var(--radius-lg);
    padding: var(--space-lg);
    margin-bottom: var(--space-lg);
@@ -34,11 +44,10 @@
 }
 
 .style-section-title {
-   font-size: var(--text-xs);
+   font-family: var(--font-display);
+   font-size: var(--text-sm);
    font-weight: 700;
-   text-transform: uppercase;
-   letter-spacing: 0.8px;
-   color: var(--text-muted);
+   color: var(--text);
    margin-bottom: var(--space-sm);
 }
 
@@ -47,6 +56,10 @@
    display: flex;
    flex-direction: column;
    gap: var(--space-sm);
+   background: var(--surface);
+   border-radius: var(--radius-md);
+   padding: var(--space-md);
+   box-shadow: var(--shadow-sm);
 }
 
 .color-row {
@@ -65,14 +78,15 @@
 
 .color-name {
    font-size: var(--text-sm);
+   font-weight: 600;
    flex: 1;
    text-transform: capitalize;
 }
 
 .color-bar-wrap {
    flex: 2;
-   height: 6px;
-   background: var(--border);
+   height: 9px;
+   background: var(--tint-green);
    border-radius: var(--radius-full);
    overflow: hidden;
 }
@@ -85,6 +99,7 @@
 
 .color-pct {
    font-size: var(--text-xs);
+   font-weight: 600;
    color: var(--text-muted);
    width: 32px;
    text-align: right;
@@ -98,18 +113,19 @@
 }
 
 .style-tag {
-   padding: 6px 12px;
-   background: var(--surface);
-   border: 1px solid var(--border);
+   padding: 9px 16px;
+   background: var(--tint-green);
+   color: var(--success);
    border-radius: var(--radius-full);
    font-size: var(--text-sm);
-   color: var(--text);
+   font-weight: 700;
    text-transform: capitalize;
 }
 
 .style-tag .tag-pct {
-   color: var(--text-muted);
+   color: #8A957F;
    font-size: var(--text-xs);
+   font-weight: 600;
    margin-left: 4px;
 }
 
@@ -123,40 +139,50 @@
 
 .stat-card {
    background: var(--surface);
-   border: 1px solid var(--border);
    border-radius: var(--radius-md);
    padding: var(--space-md);
-   text-align: center;
+   text-align: left;
+   box-shadow: var(--shadow-sm);
 }
 
 .stat-number {
-   font-size: 28px;
+   font-family: var(--font-display);
+   font-size: 24px;
    font-weight: 800;
-   letter-spacing: -1px;
+   letter-spacing: -0.02em;
+   color: var(--success);
+   text-transform: capitalize;
 }
 
 .stat-label {
    font-size: var(--text-xs);
    color: var(--text-muted);
-   margin-top: 2px;
+   margin-top: 3px;
 }
 
 /* botão gerar */
 .btn-generate {
    width: 100%;
-   padding: 14px;
-   background: var(--surface);
-   color: var(--text);
-   border: 1px solid var(--border);
-   border-radius: var(--radius-sm);
+   padding: 15px;
+   background: var(--accent);
+   color: white;
+   border-radius: var(--radius-full);
    font-size: var(--text-sm);
-   font-weight: 500;
+   font-weight: 700;
    font-family: var(--font);
-   transition: background 0.2s;
+   box-shadow: var(--shadow-accent);
 }
 
 .btn-generate:disabled {
-   opacity: 0.5;
+   opacity: 0.55;
+   box-shadow: none;
+}
+
+#btn-generate-summary {
+   background: var(--accent);
+   color: white;
+   border-radius: var(--radius-full);
+   box-shadow: var(--shadow-accent);
 }
 
 .style-header {
@@ -167,8 +193,11 @@
 
 .logout-btn {
    font-size: var(--text-sm);
+   font-weight: 600;
    color: var(--text-muted);
    font-family: var(--font);
-   padding: 4px 0;
-   text-decoration: underline;
+   background: var(--tint-green);
+   padding: 8px 16px;
+   border-radius: var(--radius-full);
+   text-decoration: none;
 }

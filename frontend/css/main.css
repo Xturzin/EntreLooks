@@ -20,12 +20,18 @@ body {
 #page-content {
    flex: 1;
    overflow-y: auto;
-   padding-bottom: calc(var(--tab-height) + env(safe-area-inset-bottom));
+   padding-bottom: calc(var(--tab-height) + var(--space-md) + env(safe-area-inset-bottom));
 }
 
 /* página genérica */
 .page {
    padding: var(--space-lg) var(--space-md);
+   animation: pageEnter 0.5s var(--ease-spring) both;
+}
+
+@keyframes pageEnter {
+   from { opacity: 0; transform: translateY(14px); }
+   to   { opacity: 1; transform: translateY(0); }
 }
 
 .page-header {
@@ -33,10 +39,12 @@ body {
 }
 
 .page-title {
+   font-family: var(--font-display);
    font-size: var(--text-2xl);
    font-weight: 800;
    letter-spacing: var(--tracking-tight);
    line-height: var(--leading-tight);
+   color: var(--text);
 }
 
 .page-subtitle {
@@ -50,7 +58,7 @@ body {
    display: none !important;
 }
 
-/* shimmer skeleton */
+/* shimmer skeleton, tom esverdeado */
 @keyframes shimmer {
    0%   { background-position: -600px 0; }
    100% { background-position:  600px 0; }
@@ -59,16 +67,16 @@ body {
 .skeleton {
    background: linear-gradient(
       90deg,
-      var(--border) 25%,
-      color-mix(in srgb, var(--border) 40%, var(--bg)) 50%,
-      var(--border) 75%
+      var(--tint-green) 25%,
+      #FFFFFF 50%,
+      var(--tint-green) 75%
    );
    background-size: 1200px 100%;
-   animation: shimmer 1.8s infinite ease-in-out;
+   animation: shimmer 1.6s infinite ease-in-out;
    border-radius: var(--radius-sm);
 }
 
-/* transições globais em interativos */
+/* transições globais em interativos: base suave, toque afunda um pouco */
 button,
 .cloth-card,
 .saved-look-card,
@@ -77,7 +85,8 @@ button,
 .home-stat-card,
 .tab-item,
 .auth-tab,
-.upload-trigger {
+.upload-trigger,
+.look-slot {
    transition:
       background var(--duration-base) var(--ease),
       border-color var(--duration-base) var(--ease),
@@ -93,36 +102,47 @@ button:active:not(:disabled),
 .mode-pill:active,
 .home-stat-card:active,
 .upload-trigger:active {
-   transform: scale(0.97);
+   transform: scale(0.96);
 }
 
-/* toast */
+/* toast: pílula escura que sobe com uma molinha */
 .toast {
    position: fixed;
    bottom: calc(var(--tab-height) + var(--space-md));
    left: 50%;
-   transform: translateX(-50%) translateY(6px);
-   background: var(--primary);
+   transform: translateX(-50%) translateY(14px) scale(0.9);
+   background: var(--text);
    color: white;
-   padding: 10px 20px;
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   padding: 12px 22px;
    border-radius: var(--radius-full);
    font-size: var(--text-sm);
-   font-weight: 500;
+   font-weight: 600;
    font-family: var(--font);
    z-index: 300;
    opacity: 0;
-   transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+   transition: opacity 0.3s var(--ease), transform 0.4s var(--ease-spring);
    white-space: nowrap;
    pointer-events: none;
-   box-shadow: var(--shadow-md);
+   box-shadow: var(--shadow-lg);
+}
+
+.toast::before {
+   content: '';
+   width: 20px;
+   height: 20px;
+   border-radius: 50%;
+   background: #8FBC88;
+   flex-shrink: 0;
 }
 
 .toast.toast-visible {
    opacity: 1;
-   transform: translateX(-50%) translateY(0);
+   transform: translateX(-50%) translateY(0) scale(1);
 }
 
-.toast.toast-error {
-   background: #C53030;
+.toast.toast-error::before {
+   background: var(--accent);
 }
-
