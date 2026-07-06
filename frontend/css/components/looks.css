@@ -411,6 +411,10 @@
    margin-top: var(--space-md);
 }
 
+.detail-share {
+   margin-top: var(--space-md);
+}
+
 /* agendar um look, dentro da folha de detalhe */
 .detail-plan {
    display: flex;

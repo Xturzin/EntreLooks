@@ -117,6 +117,7 @@ const LooksPage = {
                   <button class="picker-close" id="detail-close" aria-label="Fechar">×</button>
                </div>
                <div id="detail-body"></div>
+               <button class="btn-secondary detail-share" id="detail-share">Compartilhar look</button>
                <div class="detail-plan">
                   <input type="date" id="plan-date">
                   <button class="btn-primary" id="plan-btn">Planejar pra esse dia</button>
@@ -139,6 +140,7 @@ const LooksPage = {
       this._pickerSlot   = null
       this._planned      = []
       this._detailLookId = null
+      this._detailLook   = null
 
       // troca de abas (Montar / IA / Planejar)
       document.querySelectorAll('.look-tab').forEach(tab => {
@@ -163,6 +165,9 @@ const LooksPage = {
 
       // agendar o look aberto no detalhe pra uma data
       document.getElementById('plan-btn').addEventListener('click', () => this.planLook())
+
+      // gerar uma imagem do look pra compartilhar
+      document.getElementById('detail-share').addEventListener('click', () => this.shareLook())
 
       await Promise.all([this.loadBuildClothes(), this.loadSavedLooks()])
    },
@@ -350,6 +355,7 @@ const LooksPage = {
       if (!look) return
 
       this._detailLookId = lookId
+      this._detailLook   = look
 
       const clothes = look.clothes || []
       document.getElementById('detail-title').textContent = `Look ${look.mode}`
@@ -379,6 +385,115 @@ const LooksPage = {
       const sheet = document.getElementById('look-detail')
       sheet.classList.remove('open')
       setTimeout(() => sheet.classList.add('hidden'), 250)
+   },
+
+   loadImg(url) {
+      return new Promise((resolve, reject) => {
+         const img = new Image()
+         // crossOrigin permite exportar o canvas depois (as imagens são de outro domínio)
+         img.crossOrigin = 'anonymous'
+         img.onload  = () => resolve(img)
+         img.onerror = () => reject(new Error('falha ao carregar imagem'))
+         img.src = url
+      })
+   },
+
+   _downloadBlob(blob, name) {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = name
+      a.click()
+   },
+
+   // monta uma imagem do look (peça de cima e de baixo no centro, extras embaixo)
+   // e abre o compartilhamento do celular. No computador, baixa a imagem.
+   async shareLook() {
+      const look    = this._detailLook
+      const clothes = look ? (look.clothes || []) : []
+      if (!clothes.length) return
+
+      const btn       = document.getElementById('detail-share')
+      btn.disabled    = true
+      btn.textContent = 'Gerando imagem...'
+
+      try {
+         // separa as peças por posição
+         const byZone = { top: [], bottom: [], full: [], shoes: [], bag: [], accessory: [] }
+         clothes.forEach(c => (byZone[zoneOf(c.type)] || byZone.accessory).push(c))
+
+         const extras = [
+            ...byZone.shoes.slice(0, 1),
+            ...byZone.bag.slice(0, 1),
+            ...byZone.accessory.slice(0, 2)
+         ]
+         const all = [
+            ...byZone.full.slice(0, 1),
+            ...byZone.top.slice(0, 1),
+            ...byZone.bottom.slice(0, 1),
+            ...extras
+         ]
+
+         // carrega todas as imagens usadas
+         const imgs = new Map()
+         await Promise.all(all.map(async c => imgs.set(c.id, await this.loadImg(c.image_url))))
+
+         const W = 1080, H = 1350
+         const canvas  = document.createElement('canvas')
+         canvas.width  = W
+         canvas.height = H
+         const ctx = canvas.getContext('2d')
+
+         ctx.fillStyle = '#F5F8F1'
+         ctx.fillRect(0, 0, W, H)
+
+         ctx.fillStyle = '#252E20'
+         ctx.textAlign = 'center'
+         ctx.font      = "700 58px 'Segoe UI', Arial, sans-serif"
+         ctx.fillText('EntreLooks', W / 2, 112)
+
+         const draw = (c, x, y, w, h) => {
+            const img = imgs.get(c.id)
+            if (!img) return
+            const r  = Math.min(w / img.width, h / img.height)
+            const dw = img.width * r, dh = img.height * r
+            ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
+         }
+
+         if (byZone.full[0]) {
+            draw(byZone.full[0], 290, 180, 500, 740)
+         } else {
+            if (byZone.top[0])    draw(byZone.top[0], 315, 180, 450, 410)
+            if (byZone.bottom[0]) draw(byZone.bottom[0], 345, 560, 390, 460)
+         }
+
+         if (extras.length) {
+            const boxW = 200, gap = 28
+            const totalW = extras.length * boxW + (extras.length - 1) * gap
+            let ex = (W - totalW) / 2
+            extras.forEach(c => { draw(c, ex, 1070, boxW, boxW); ex += boxW + gap })
+         }
+
+         const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
+         if (!blob) throw new Error('sem imagem')
+
+         const file = new File([blob], 'look-entrelooks.png', { type: 'image/png' })
+
+         if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+               await navigator.share({ files: [file], title: 'Meu look' })
+            } catch (e) {
+               // se não for cancelamento do usuário, cai pro download
+               if (e.name !== 'AbortError') this._downloadBlob(blob, 'look-entrelooks.png')
+            }
+         } else {
+            this._downloadBlob(blob, 'look-entrelooks.png')
+         }
+      } catch (e) {
+         showToast('Não consegui gerar a imagem agora. Tente um print.', 'error')
+      } finally {
+         btn.disabled    = false
+         btn.textContent = 'Compartilhar look'
+      }
    },
 
    // ============ PLANEJAR ============
