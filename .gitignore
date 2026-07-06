@@ -26,3 +26,7 @@ dist/
 # Claude
 .claude/
 CLAUDE.md
+briefing-design.md
+
+# Redesign
+design/
