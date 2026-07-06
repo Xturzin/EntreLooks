@@ -375,6 +375,10 @@
    color: white;
 }
 
+.edit-photo-btn {
+   margin-bottom: var(--space-md);
+}
+
 .edit-save {
    margin-top: var(--space-sm);
 }

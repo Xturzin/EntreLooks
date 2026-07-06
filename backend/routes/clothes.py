@@ -1,4 +1,5 @@
 import uuid
+import time
 from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
@@ -166,3 +167,59 @@ async def list_clothes(
       .execute()
    )
    return result.data
+
+@router.post("/{cloth_id}/photo")
+async def replace_photo(
+   cloth_id: str,
+   file: UploadFile = File(...),
+   bg_removed: bool = Form(False),
+   user=Depends(get_current_user)
+):
+   """Troca só a foto de uma peça já cadastrada, mantendo o resto (id, categoria,
+   presença nos looks). Serve pra consertar um recorte ruim ou modernizar peça antiga."""
+   rate_limiter.check(user.id, limit=20, window=3600)
+
+   existing = (
+      supabase.table("clothes")
+      .select("id")
+      .eq("id", cloth_id)
+      .eq("user_id", user.id)
+      .execute()
+   )
+   if not existing.data:
+      raise HTTPException(status_code=404, detail="Peça não encontrada")
+
+   if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"):
+      raise HTTPException(status_code=400, detail="Formato inválido. Use JPG, PNG ou WEBP.")
+
+   image_bytes = await file.read()
+   if len(image_bytes) > MAX_FILE_SIZE:
+      raise HTTPException(status_code=400, detail="Imagem muito grande. Máximo 10MB.")
+
+   # se já veio recortada do navegador, só normaliza; senão recorta aqui
+   processed    = to_png(image_bytes) if bg_removed else remove_background(image_bytes)
+   storage_path = f"{user.id}/{cloth_id}.png"
+
+   # sobrescreve o arquivo no mesmo caminho (upsert)
+   try:
+      supabase.storage.from_("clothes").upload(
+         storage_path,
+         processed,
+         {"content-type": "image/png", "upsert": "true"}
+      )
+   except Exception as e:
+      raise HTTPException(status_code=500, detail=f"Erro ao trocar a imagem: {str(e)}")
+
+   # o link do arquivo é o mesmo; o ?v no fim força o navegador a pegar a versão nova
+   base_url  = supabase.storage.from_("clothes").get_public_url(storage_path)
+   separator = "&" if "?" in base_url else "?"
+   image_url = f"{base_url}{separator}v={int(time.time())}"
+
+   result = (
+      supabase.table("clothes")
+      .update({"image_url": image_url})
+      .eq("id", cloth_id)
+      .eq("user_id", user.id)
+      .execute()
+   )
+   return result.data[0]

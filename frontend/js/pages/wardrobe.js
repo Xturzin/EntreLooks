@@ -75,6 +75,8 @@ const WardrobePage = {
                   <span>Editar peça</span>
                   <button class="picker-close" id="edit-close" aria-label="Fechar">×</button>
                </div>
+               <input type="file" id="edit-photo-input" accept="image/*" class="hidden">
+               <button class="btn-secondary edit-photo-btn" id="edit-photo-btn">Trocar foto</button>
                <div id="edit-fields"></div>
                <button class="btn-primary edit-save" id="edit-save">Salvar</button>
             </div>
@@ -96,6 +98,14 @@ const WardrobePage = {
       document.getElementById('edit-close').addEventListener('click', () => this.closeEdit())
       document.getElementById('edit-backdrop').addEventListener('click', () => this.closeEdit())
       document.getElementById('edit-save').addEventListener('click', () => this.saveEdit())
+
+      // trocar a foto da peça aberta na edição
+      const photoInput = document.getElementById('edit-photo-input')
+      document.getElementById('edit-photo-btn').addEventListener('click', () => photoInput.click())
+      photoInput.addEventListener('change', (e) => {
+         const f = e.target.files[0]
+         if (f) this.replacePhoto(f)
+      })
 
       await Promise.all([this.loadStats(), this.loadClothes()])
    },
@@ -522,6 +532,45 @@ async loadStats() {
 
       btn.disabled    = false
       btn.textContent = 'Salvar'
+   },
+
+   // sobe uma foto nova pra peça aberta na edição, substituindo só a imagem
+   async replacePhoto(file) {
+      if (!file || !this._editingId) return
+
+      const btn       = document.getElementById('edit-photo-btn')
+      btn.disabled    = true
+      btn.textContent = 'Deixando a peça limpa...'
+
+      // mesmo recorte do cadastro: tenta no navegador, servidor de reserva
+      const resized = await this.resizeImage(file)
+      let processed = null
+      try { processed = await this.processPhoto(resized) } catch (e) {}
+
+      const fileToSend = processed || resized
+      const bgRemoved  = !!processed
+
+      btn.textContent = 'Enviando...'
+      const formData = new FormData()
+      formData.append('file', fileToSend)
+      formData.append('bg_removed', bgRemoved ? 'true' : 'false')
+
+      const response = await API.post(`/clothes/${this._editingId}/photo`, formData)
+
+      if (response?.ok) {
+         const updated = await response.json()
+         // atualiza a peça na lista local (a URL nova tem ?v pra furar o cache)
+         this.clothes = this.clothes.map(c => c.id === updated.id ? updated : c)
+         this.applyFilter()
+         showToast('Foto atualizada')
+         this.closeEdit()
+      } else {
+         showToast('Erro ao trocar a foto. Tente de novo.', 'error')
+      }
+
+      btn.disabled    = false
+      btn.textContent = 'Trocar foto'
+      document.getElementById('edit-photo-input').value = ''
    },
 
    renderGrid(clothes) {
