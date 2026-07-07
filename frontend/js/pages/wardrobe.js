@@ -64,6 +64,7 @@ const WardrobePage = {
 
             <div class="upload-status hidden" id="upload-status"></div>
 
+            <input type="text" id="wardrobe-search" class="wardrobe-search hidden" placeholder="Buscar por apelido, tipo ou cor">
             <div class="filter-bar hidden" id="filter-bar"></div>
             <div class="clothes-grid" id="clothes-grid"></div>
          </div>
@@ -77,6 +78,7 @@ const WardrobePage = {
                </div>
                <input type="file" id="edit-photo-input" accept="image/*" class="hidden">
                <button class="btn-secondary edit-photo-btn" id="edit-photo-btn">Trocar foto</button>
+               <input type="text" id="edit-nickname" class="edit-nickname" placeholder="Apelido (opcional)" maxlength="40">
                <div id="edit-fields"></div>
                <button class="btn-primary edit-save" id="edit-save">Salvar</button>
             </div>
@@ -92,6 +94,7 @@ const WardrobePage = {
       this._hasMore     = false
       this.clothes      = []
       this._editingId   = null
+      this._search      = ''
       this.bindUploadEvents()
 
       // folha de edição: fechar tocando fora ou no X, e salvar
@@ -105,6 +108,12 @@ const WardrobePage = {
       photoInput.addEventListener('change', (e) => {
          const f = e.target.files[0]
          if (f) this.replacePhoto(f)
+      })
+
+      // busca por apelido, tipo ou cor
+      document.getElementById('wardrobe-search').addEventListener('input', (e) => {
+         this._search = e.target.value
+         this.applyFilter()
       })
 
       await Promise.all([this.loadStats(), this.loadClothes()])
@@ -399,12 +408,16 @@ async loadStats() {
    },
 
    renderFilters() {
-      const bar = document.getElementById('filter-bar')
+      const bar    = document.getElementById('filter-bar')
+      const search = document.getElementById('wardrobe-search')
 
       if (this.clothes.length === 0) {
          bar.classList.add('hidden')
+         search.classList.add('hidden')
          return
       }
+
+      search.classList.remove('hidden')
 
       const types = ['all', ...new Set(this.clothes.map(c => c.type).filter(Boolean))]
 
@@ -427,9 +440,18 @@ async loadStats() {
    },
 
    applyFilter() {
-      const filtered = this.activeFilter === 'all'
+      let filtered = this.activeFilter === 'all'
          ? this.clothes
          : this.clothes.filter(c => c.type === this.activeFilter)
+
+      // busca por apelido, tipo ou cor (o que a pessoa digitou)
+      const q = (this._search || '').toLowerCase().trim()
+      if (q) {
+         filtered = filtered.filter(c =>
+            [c.nickname, c.type, c.color].some(v => (v || '').toLowerCase().includes(q))
+         )
+      }
+
       this.renderGrid(filtered)
    },
 
@@ -466,6 +488,8 @@ async loadStats() {
       const cloth = this.clothes.find(c => c.id === clothId)
       if (!cloth) return
       this._editingId = clothId
+
+      document.getElementById('edit-nickname').value = cloth.nickname || ''
 
       // monta um grupo de opções por campo, já marcando o valor atual da peça
       const fields = document.getElementById('edit-fields')
@@ -505,12 +529,13 @@ async loadStats() {
    async saveEdit() {
       if (!this._editingId) return
 
-      // pega a opção marcada de cada campo
+      // pega a opção marcada de cada campo, mais o apelido digitado
       const updates = {}
       document.querySelectorAll('#edit-fields .edit-options').forEach(group => {
          const active = group.querySelector('.opt-chip.active')
          if (active) updates[group.dataset.field] = active.dataset.value
       })
+      updates.nickname = document.getElementById('edit-nickname').value.trim()
 
       const btn = document.getElementById('edit-save')
       btn.disabled    = true
@@ -595,7 +620,7 @@ async loadStats() {
             <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
             <button class="cloth-delete-btn" data-id="${cloth.id}" aria-label="Remover peça">×</button>
             <div class="cloth-info">
-               <span class="cloth-type">${cloth.type || 'Peça'}</span>
+               <span class="cloth-type">${cloth.nickname || cloth.type || 'Peça'}</span>
                ${cloth.color ? `<span class="cloth-color">${cloth.color}</span>` : ''}
             </div>
          </div>

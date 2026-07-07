@@ -107,6 +107,25 @@
    animation: none;
 }
 
+/* busca no armário */
+.wardrobe-search {
+   width: 100%;
+   padding: 13px 18px;
+   border: 1.5px solid var(--border);
+   border-radius: var(--radius-full);
+   font-size: var(--text-sm);
+   font-family: var(--font);
+   background: var(--surface);
+   color: var(--text);
+   outline: none;
+   margin-bottom: var(--space-md);
+   box-shadow: var(--shadow-xs);
+}
+
+.wardrobe-search:focus {
+   border-color: var(--primary);
+}
+
 /* filtros */
 .filter-bar {
    display: flex;
@@ -377,6 +396,23 @@
 
 .edit-photo-btn {
    margin-bottom: var(--space-md);
+}
+
+.edit-nickname {
+   width: 100%;
+   padding: 14px 18px;
+   border: 1.5px solid var(--border);
+   border-radius: var(--radius-full);
+   font-size: var(--text-base);
+   font-family: var(--font);
+   background: var(--bg);
+   color: var(--text);
+   outline: none;
+   margin-bottom: var(--space-md);
+}
+
+.edit-nickname:focus {
+   border-color: var(--primary);
 }
 
 .edit-save {

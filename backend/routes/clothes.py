@@ -20,6 +20,7 @@ class ClothUpdate(BaseModel):
    color:    Optional[str] = None
    style:    Optional[str] = None
    occasion: Optional[str] = None
+   nickname: Optional[str] = None
 
 @router.post("/")
 async def upload_clothing(

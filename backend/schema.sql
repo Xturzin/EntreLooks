@@ -16,6 +16,7 @@ create table if not exists clothes (
    color        text,          -- cor principal em português
    style        text,          -- ex: casual, elegante, esportivo
    occasion     text,          -- ex: dia a dia, trabalho, festa
+   nickname     text,          -- apelido opcional que a pessoa dá pra peça
    wear_count   integer not null default 0,
    last_worn_at timestamptz,
    created_at   timestamptz not null default now()
