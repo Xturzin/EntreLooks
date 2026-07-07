@@ -49,6 +49,11 @@ async function showApp() {
    if (!Auth.isAuthenticated()) return
    if (meRes?.ok) setUserName((await meRes.json()).name)
 
+   // mostra o app já aqui. O onboarding e a Dora aparecem por cima numa camada
+   // flutuante, e quando a Dora manda pro armário o container precisa estar visível,
+   // senão a navegação desenha numa tela escondida e fica tudo branco.
+   document.getElementById('app').classList.remove('hidden')
+
    // restaura tab da URL se existir
    const hashPage = window.location.hash.replace('#', '')
 
@@ -68,7 +73,6 @@ async function showApp() {
       localStorage.setItem('el_onboarded', 'true')
    }
 
-   document.getElementById('app').classList.remove('hidden')
    const targetPage = routes[hashPage] ? hashPage : 'home'
    navigate(targetPage)
 }
