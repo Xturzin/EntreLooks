@@ -181,61 +181,94 @@
    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
-/* tela da Dora pedindo o nome, logo depois do onboarding */
+/* boas-vindas da Dora: véu claro translúcido com o app embaçado atrás, avatar
+   da marca no centro e a pergunta em destaque. Menos invasivo que a tela cheia
+   antiga. Mesma estrutura do dora-welcome.js. */
 .dora-welcome {
    position: fixed;
    inset: 0;
    z-index: 500;
    max-width: 480px;
    margin: 0 auto;
-   background:
-      radial-gradient(circle at 100% 0%, var(--primary-dark) 0%, transparent 55%),
-      var(--primary);
+   background: rgba(245, 248, 241, 0.78);
+   -webkit-backdrop-filter: blur(7px) saturate(0.85);
+   backdrop-filter: blur(7px) saturate(0.85);
    display: flex;
    align-items: center;
    justify-content: center;
-   padding: var(--space-xl) var(--space-lg);
+   padding: var(--space-xl) 40px;
    padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
    opacity: 1;
    transition: opacity 0.3s var(--ease);
-   animation: authRise 0.5s var(--ease-spring) both;
+   animation: doraVeil 0.5s ease both;
+}
+
+@keyframes doraVeil {
+   from { opacity: 0; }
+   to   { opacity: 1; }
+}
+
+@keyframes doraPop {
+   0%   { opacity: 0; transform: scale(0.82); }
+   70%  { opacity: 1; transform: scale(1.045); }
+   100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes doraRise {
+   from { opacity: 0; transform: translateY(26px); }
+   to   { opacity: 1; transform: translateY(0); }
 }
 
 .dora-welcome-inner {
    width: 100%;
    display: flex;
    flex-direction: column;
-   align-items: flex-start;
-   gap: var(--space-md);
+   align-items: center;
+   text-align: center;
+   gap: 0;
 }
 
+/* avatar: círculo rosa com o cabide da marca (o "D" do markup fica escondido) */
 .dora-avatar {
-   width: 56px;
-   height: 56px;
+   width: 84px;
+   height: 84px;
    border-radius: 50%;
    background: var(--accent);
-   color: #FFFFFF;
-   font-family: var(--font-display);
-   font-weight: 800;
-   font-size: 24px;
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   box-shadow: var(--shadow-md);
+   font-size: 0;
+   color: transparent;
+   box-shadow: 0 18px 40px rgba(199, 93, 126, 0.35);
+   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cg transform='rotate(-8 12 6)'%3E%3Cpath d='M12 11V8.9a2.1 2.1 0 1 1 2.1-2.1' stroke='%23ffffff' stroke-width='1.9' stroke-linecap='round'/%3E%3Cpath d='M12.9 11.2l6.9 5.3c1.5 1.15.7 3.5-1.2 3.5H5.4c-1.9 0-2.7-2.35-1.2-3.5l6.9-5.3a1.5 1.5 0 0 1 1.8 0z' fill='%23ffffff'/%3E%3C/g%3E%3C/svg%3E");
+   background-repeat: no-repeat;
+   background-position: center;
+   background-size: 46px 46px;
+   margin-bottom: var(--space-lg);
+   animation: doraPop 0.7s var(--ease-spring) 0.15s both;
 }
 
+/* a fala vira a manchete central, sem balão */
 .dora-bubble {
-   background: var(--surface);
+   background: transparent;
+   box-shadow: none;
+   padding: 0;
+   animation: doraRise 0.6s var(--ease-spring) 0.3s both;
+}
+
+.dora-bubble p {
+   font-family: var(--font-display);
+   font-size: 26px;
+   font-weight: 800;
+   letter-spacing: -0.025em;
+   line-height: 1.2;
    color: var(--text);
-   border-radius: var(--radius-lg);
-   border-top-left-radius: 6px;
-   padding: var(--space-md);
-   box-shadow: var(--shadow-md);
-   line-height: var(--leading-relaxed);
-   animation: authRise 0.5s var(--ease-spring) 0.15s both;
 }
 
 .dora-bubble p + p {
+   font-family: var(--font);
+   font-size: var(--text-sm);
+   font-weight: 500;
+   letter-spacing: 0;
+   line-height: var(--leading-relaxed);
+   color: var(--text-muted);
    margin-top: var(--space-sm);
 }
 
@@ -244,34 +277,47 @@
    display: flex;
    flex-direction: column;
    gap: var(--space-sm);
-   margin-top: var(--space-sm);
-   animation: authRise 0.5s var(--ease-spring) 0.3s both;
+   margin-top: var(--space-xl);
 }
 
 .dora-form input {
    width: 100%;
-   padding: 16px 20px;
-   border: none;
+   padding: 17px 24px;
+   border: 1.5px solid transparent;
    border-radius: var(--radius-full);
    font-size: var(--text-base);
    font-family: var(--font);
-   background: rgba(255, 255, 255, 0.96);
+   background: var(--surface);
    color: var(--text);
+   text-align: left;
    outline: none;
+   box-shadow: 0 14px 34px rgba(76, 110, 72, 0.12);
+   transition: border-color var(--duration-base) var(--ease);
+   animation: doraRise 0.6s var(--ease-spring) 0.45s both;
+}
+
+.dora-form input:focus {
+   border-color: var(--primary);
+}
+
+.dora-form input::placeholder {
+   color: #A9B4A2;
 }
 
 .dora-form .btn-primary {
-   background: #FFFFFF;
-   color: var(--primary-dark);
+   animation: doraRise 0.6s var(--ease-spring) 0.55s both;
 }
 
 .dora-skip {
    align-self: center;
-   color: #E6EEE1;
+   color: var(--text-muted);
    font-size: var(--text-sm);
    font-weight: 600;
    font-family: var(--font);
    background: transparent;
+   text-decoration: underline;
+   text-underline-offset: 3px;
    padding: var(--space-sm);
    margin-top: var(--space-xs);
+   animation: doraVeil 0.5s ease 0.75s both;
 }

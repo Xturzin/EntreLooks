@@ -15,8 +15,8 @@ const DoraWelcome = {
             <div class="dora-welcome-inner">
                <div class="dora-avatar">D</div>
                <div class="dora-bubble">
-                  <p>Oi, eu sou a Dora, sua estilista aqui do EntreLooks.</p>
-                  <p>Antes da gente começar, como você gostaria que eu te chamasse?</p>
+                  <p>Oi, eu sou a Dora</p>
+                  <p>Sua estilista aqui do EntreLooks. Como você gostaria que eu te chamasse?</p>
                </div>
                <div class="dora-form">
                   <input type="text" id="dora-name" placeholder="Seu nome" autocomplete="given-name" maxlength="40">
@@ -62,12 +62,12 @@ const DoraWelcome = {
       this.finish()
    },
 
+   // só fecha o véu. O app já está aberto atrás (o onboarding navegou antes de chamar a Dora).
    finish() {
       const overlay = document.getElementById('dora-welcome')
       if (overlay) {
          overlay.style.opacity = '0'
          setTimeout(() => overlay.remove(), 300)
       }
-      navigate('wardrobe')
    }
 }

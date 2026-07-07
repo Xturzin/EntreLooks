@@ -135,10 +135,11 @@ const OnboardingPage = {
       overlay.style.transition = 'opacity 0.3s ease'
       overlay.style.opacity    = '0'
 
-      // depois do onboarding a Dora se apresenta e pergunta o nome, e é ela que
-      // leva a pessoa pro armário no fim
+      // abre o armário primeiro (fica embaçado atrás) e então a Dora sobe o véu
+      // por cima pra se apresentar e perguntar o nome
       setTimeout(() => {
          overlay.remove()
+         navigate('wardrobe')
          DoraWelcome.show()
       }, 300)
    }
