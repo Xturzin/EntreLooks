@@ -201,3 +201,8 @@
    border-radius: var(--radius-full);
    text-decoration: none;
 }
+
+/* botão de compartilhar o estilo como imagem */
+.btn-share-style {
+   margin-top: var(--space-md);
+}

@@ -48,6 +48,7 @@ const StylePage = {
 
    renderProfile(data) {
       const container = document.getElementById('style-content')
+      this._data = data
 
       if (data.total === 0) {
          container.innerHTML = `
@@ -141,6 +142,8 @@ const StylePage = {
          ${data.summary ? `
             <button class="btn-generate" id="btn-generate-summary">Atualizar análise</button>
          ` : ''}
+
+         <button class="btn-secondary btn-share-style" id="btn-share-style">Compartilhar meu estilo</button>
       `
 
       if (data.summary) {
@@ -149,6 +152,7 @@ const StylePage = {
       }
 
       document.getElementById('btn-generate-summary')?.addEventListener('click', () => this.generate())
+      document.getElementById('btn-share-style')?.addEventListener('click', () => this.shareStyle())
    },
 
    async generate() {
@@ -168,5 +172,135 @@ const StylePage = {
       }
 
       this.renderProfile(await response.json())
+   },
+
+   _downloadBlob(blob, name) {
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = name
+      a.click()
+   },
+
+   // gera um cartão do DNA de estilo (resumo, cores dominantes, estilos) pra compartilhar
+   async shareStyle() {
+      const data = this._data
+      if (!data || !data.total) return
+
+      const btn       = document.getElementById('btn-share-style')
+      btn.disabled    = true
+      btn.textContent = 'Gerando imagem...'
+
+      try {
+         const W = 1080, H = 1350, M = 100
+         const canvas  = document.createElement('canvas')
+         canvas.width  = W
+         canvas.height = H
+         const ctx = canvas.getContext('2d')
+
+         ctx.fillStyle = '#F5F8F1'
+         ctx.fillRect(0, 0, W, H)
+
+         ctx.textAlign = 'center'
+         ctx.fillStyle = '#C75D7E'
+         ctx.font = "700 42px 'Segoe UI', Arial, sans-serif"
+         ctx.fillText('EntreLooks', W / 2, 100)
+
+         ctx.fillStyle = '#252E20'
+         ctx.font = "800 76px 'Segoe UI', Arial, sans-serif"
+         ctx.fillText('Meu estilo', W / 2, 196)
+
+         // quebra o texto do resumo em várias linhas pra caber na largura
+         const wrap = (text, x, y, maxW, lh) => {
+            const words = text.split(' ')
+            let line = ''
+            for (const w of words) {
+               const test = line ? line + ' ' + w : w
+               if (ctx.measureText(test).width > maxW && line) {
+                  ctx.fillText(line, x, y); y += lh; line = w
+               } else line = test
+            }
+            if (line) { ctx.fillText(line, x, y); y += lh }
+            return y
+         }
+
+         // desenha uma pílula arredondada (fundo das tags de estilo)
+         const pill = (x, y, w, h, r) => {
+            ctx.beginPath()
+            ctx.moveTo(x + r, y)
+            ctx.arcTo(x + w, y, x + w, y + h, r)
+            ctx.arcTo(x + w, y + h, x, y + h, r)
+            ctx.arcTo(x, y + h, x, y, r)
+            ctx.arcTo(x, y, x + w, y, r)
+            ctx.closePath()
+         }
+
+         let y = 290
+         ctx.textAlign = 'left'
+
+         if (data.summary) {
+            ctx.fillStyle = '#4C6E48'
+            ctx.font = "500 34px 'Segoe UI', Arial, sans-serif"
+            y = wrap(data.summary, M, y, W - 2 * M, 48) + 34
+         }
+
+         const colors = data.dominant_colors || []
+         if (colors.length) {
+            ctx.fillStyle = '#252E20'
+            ctx.font = "700 38px 'Segoe UI', Arial, sans-serif"
+            ctx.fillText('Cores que eu mais uso', M, y); y += 62
+            colors.slice(0, 5).forEach(c => {
+               ctx.fillStyle = colorHex(c.name)
+               ctx.beginPath(); ctx.arc(M + 20, y - 12, 20, 0, Math.PI * 2); ctx.fill()
+               ctx.strokeStyle = '#E3E9DC'; ctx.lineWidth = 2; ctx.stroke()
+               ctx.fillStyle = '#252E20'
+               ctx.font = "600 32px 'Segoe UI', Arial, sans-serif"
+               ctx.fillText(`${c.name}  ${c.percentage}%`, M + 64, y)
+               y += 56
+            })
+            y += 28
+         }
+
+         const styles = data.top_styles || []
+         if (styles.length) {
+            ctx.fillStyle = '#252E20'
+            ctx.font = "700 38px 'Segoe UI', Arial, sans-serif"
+            ctx.fillText('Meus estilos', M, y); y += 60
+            let tx = M
+            ctx.font = "600 30px 'Segoe UI', Arial, sans-serif"
+            styles.slice(0, 5).forEach(s => {
+               const w = ctx.measureText(s.name).width + 44
+               if (tx + w > W - M) { tx = M; y += 66 }
+               ctx.fillStyle = '#EFF4EA'
+               pill(tx, y - 38, w, 52, 26); ctx.fill()
+               ctx.fillStyle = '#4C6E48'
+               ctx.fillText(s.name, tx + 22, y)
+               tx += w + 16
+            })
+         }
+
+         ctx.textAlign = 'center'
+         ctx.fillStyle = '#7C8876'
+         ctx.font = "600 32px 'Segoe UI', Arial, sans-serif"
+         ctx.fillText(`${data.total} peças no meu armário`, W / 2, H - 80)
+
+         const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
+         if (!blob) throw new Error('sem imagem')
+         const file = new File([blob], 'estilo-entrelooks.png', { type: 'image/png' })
+
+         if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+               await navigator.share({ files: [file], title: 'Meu estilo' })
+            } catch (e) {
+               if (e.name !== 'AbortError') this._downloadBlob(blob, 'estilo-entrelooks.png')
+            }
+         } else {
+            this._downloadBlob(blob, 'estilo-entrelooks.png')
+         }
+      } catch (e) {
+         showToast('Não consegui gerar a imagem agora. Tente um print.', 'error')
+      } finally {
+         btn.disabled    = false
+         btn.textContent = 'Compartilhar meu estilo'
+      }
    }
 }
