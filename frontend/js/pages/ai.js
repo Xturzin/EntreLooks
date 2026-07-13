@@ -85,7 +85,7 @@ const AIPage = {
       try {
          const response = await API.post(
             '/ai/chat',
-            { message, history: this.history.slice(-10) },
+            { message, history: this.history.slice(-10), weather: getWeather() },
             controller.signal
          )
 

@@ -89,6 +89,7 @@ const HomePage = {
                const info = getWeatherInfo(code)
 
                this.weather = { temperature: temp, description: info.label }
+               setWeather(this.weather)   // deixa disponível pra Dora no chat
 
                widget.className = 'weather-widget'
                widget.innerHTML = `

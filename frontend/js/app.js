@@ -19,6 +19,18 @@ function greetingName() {
    return USER_NAME ? USER_NAME.trim().split(' ')[0] : null
 }
 
+// clima de agora. A home busca uma vez e a Dora reaproveita no chat, pra ela não
+// sugerir casaco em dia de 35 graus.
+let USER_WEATHER = null
+
+function setWeather(weather) {
+   USER_WEATHER = weather || null
+}
+
+function getWeather() {
+   return USER_WEATHER
+}
+
 function navigate(page) {
    if (!routes[page]) return
 

@@ -116,7 +116,15 @@ Formato obrigatório:
    except (json.JSONDecodeError, AttributeError):
       raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
 
-async def chat_with_stylist(message: str, history: list, clothes: list, name: str = None) -> str:
+async def chat_with_stylist(
+   message: str,
+   history: list,
+   clothes: list,
+   name: str = None,
+   weather: dict = None,
+   planned: list = None,
+   key_pieces: dict = None
+) -> str:
    if clothes:
       items            = [f"{c.get('type', 'peça')} {c.get('color', '')}".strip() for c in clothes]
       wardrobe_summary = ", ".join(items)
@@ -126,10 +134,42 @@ async def chat_with_stylist(message: str, history: list, clothes: list, name: st
    # se a pessoa disse o nome no onboarding, a Dora chama por ele de vez em quando
    name_line = f"\nO nome da pessoa é {name}. Chame pelo nome de vez em quando, de forma natural, sem exagerar." if name else ""
 
+   # clima de agora, pra ela não sugerir casaco em dia de 35 graus
+   weather_line = ""
+   if weather:
+      temp = weather.get("temperature", "")
+      desc = weather.get("description", "")
+      weather_line = f"\nClima agora: {desc}, {temp}°C. Leve isso em conta ao sugerir roupa."
+
+   # o que a pessoa já deixou planejado pros próximos dias
+   planned_line = ""
+   if planned:
+      linhas = [
+         f"{p['date']}: look {p.get('mode', 'casual')} com {', '.join(p['pieces'][:4])}"
+         for p in planned[:5] if p.get("pieces")
+      ]
+      if linhas:
+         planned_line = (
+            "\nLooks que ela já planejou pros próximos dias:\n- "
+            + "\n- ".join(linhas)
+            + "\nNão repita esses looks e considere o que já está reservado."
+         )
+
+   # peças que ela mais repete em cada ocasião, as favoritas dela
+   key_line = ""
+   if key_pieces:
+      linhas = [f"{modo}: {', '.join(nomes)}" for modo, nomes in key_pieces.items() if nomes]
+      if linhas:
+         key_line = (
+            "\nPeças que ela mais usa em cada ocasião (as favoritas dela):\n- "
+            + "\n- ".join(linhas)
+            + "\nUse essas peças-chave como âncora quando sugerir look pra essas ocasiões."
+         )
+
    system_prompt = f"""Você é Dora, uma estilista pessoal brasileira descontraída e prática.
 Você conhece o guarda-roupa do usuário e ajuda a montar looks, dar dicas de moda e responder dúvidas de estilo.
 Seja direta, simpática e use linguagem natural brasileira. Evite respostas longas demais.
-Quando sugerir um look, mencione as peças pelo tipo e cor.{name_line}
+Quando sugerir um look, mencione as peças pelo tipo e cor.{name_line}{weather_line}{planned_line}{key_line}
 
 Guarda-roupa do usuário: {wardrobe_summary}"""
 
