@@ -19,7 +19,7 @@ function greetingName() {
    return USER_NAME ? USER_NAME.trim().split(' ')[0] : null
 }
 
-// clima de agora. A home busca uma vez e a Dora reaproveita no chat, pra ela não
+// clima de agora. A home busca uma vez e a Mira reaproveita no chat, pra ela não
 // sugerir casaco em dia de 35 graus.
 let USER_WEATHER = null
 
@@ -61,8 +61,8 @@ async function showApp() {
    if (!Auth.isAuthenticated()) return
    if (meRes?.ok) setUserName((await meRes.json()).name)
 
-   // mostra o app já aqui. O onboarding e a Dora aparecem por cima numa camada
-   // flutuante, e quando a Dora manda pro armário o container precisa estar visível,
+   // mostra o app já aqui. O onboarding e a Mira aparecem por cima numa camada
+   // flutuante, e quando a Mira manda pro armário o container precisa estar visível,
    // senão a navegação desenha numa tela escondida e fica tudo branco.
    document.getElementById('app').classList.remove('hidden')
 

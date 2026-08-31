@@ -89,7 +89,7 @@ const HomePage = {
                const info = getWeatherInfo(code)
 
                this.weather = { temperature: temp, description: info.label }
-               setWeather(this.weather)   // deixa disponível pra Dora no chat
+               setWeather(this.weather)   // deixa disponível pra Mira no chat
 
                widget.className = 'weather-widget'
                widget.innerHTML = `
@@ -125,7 +125,7 @@ const HomePage = {
 
       this.autoMode = mode
 
-      // se a pessoa disse o nome pra Dora, a saudação fica pessoal ("Boa tarde, Ana")
+      // se a pessoa disse o nome pra Mira, a saudação fica pessoal ("Boa tarde, Ana")
       const name = greetingName()
       document.getElementById('greeting-label').textContent   = name ? `${greeting}, ${name}` : greeting
       document.getElementById('quick-mode-label').textContent = `look ${mode}`

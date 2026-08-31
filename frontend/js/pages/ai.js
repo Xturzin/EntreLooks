@@ -2,7 +2,7 @@ const AIPage = {
    history: [],
 
    render() {
-      // cumprimenta pelo nome se a pessoa tiver dito à Dora no começo
+      // cumprimenta pelo nome se a pessoa tiver dito à Mira no começo
       const name = greetingName()
       const hi   = name ? `Oi, ${name}! ` : 'Oi! '
 
@@ -10,11 +10,11 @@ const AIPage = {
          <div class="page ai-page">
             <div class="page-header">
                <h1 class="page-title">Estilista IA</h1>
-               <p class="page-subtitle">Dora, sua consultora de moda</p>
+               <p class="page-subtitle">Mira, sua consultora de moda</p>
             </div>
             <div class="chat-messages" id="chat-messages">
                <div class="chat-bubble ai">
-                  ${hi}Sou a Dora, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
+                  ${hi}Sou a Mira, sua estilista pessoal. Posso te ajudar a montar looks, dar dicas de estilo ou responder qualquer dúvida de moda. Como posso te ajudar hoje?
                </div>
             </div>
          </div>

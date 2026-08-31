@@ -133,11 +133,11 @@ async def chat(data: ChatRequest, user=Depends(get_current_user)):
 
    history = [{"role": m.role, "content": m.content} for m in data.history]
 
-   # nome que a pessoa escolheu no onboarding, pra Dora chamar pelo nome
+   # nome que a pessoa escolheu no onboarding, pra Mira chamar pelo nome
    meta = getattr(user, "user_metadata", None) or {}
    name = meta.get("name")
 
-   # contexto que deixa a Dora esperta: o que está planejado e as peças-chave dela.
+   # contexto que deixa a Mira esperta: o que está planejado e as peças-chave dela.
    # se algo falhar, os helpers devolvem vazio e a conversa segue normal.
    planned, key_pieces = await asyncio.gather(
       _get_planned_context(user.id),

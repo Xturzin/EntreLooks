@@ -135,12 +135,12 @@ const OnboardingPage = {
       overlay.style.transition = 'opacity 0.3s ease'
       overlay.style.opacity    = '0'
 
-      // abre o armário primeiro (fica embaçado atrás) e então a Dora sobe o véu
+      // abre o armário primeiro (fica embaçado atrás) e então a Mira sobe o véu
       // por cima pra se apresentar e perguntar o nome
       setTimeout(() => {
          overlay.remove()
          navigate('wardrobe')
-         DoraWelcome.show()
+         MiraWelcome.show()
       }, 300)
    }
 }

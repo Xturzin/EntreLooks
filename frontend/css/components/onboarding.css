@@ -181,10 +181,10 @@
    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
-/* boas-vindas da Dora: véu claro translúcido com o app embaçado atrás, avatar
+/* boas-vindas da Mira: véu claro translúcido com o app embaçado atrás, avatar
    da marca no centro e a pergunta em destaque. Menos invasivo que a tela cheia
-   antiga. Mesma estrutura do dora-welcome.js. */
-.dora-welcome {
+   antiga. Mesma estrutura do mira-welcome.js. */
+.mira-welcome {
    position: fixed;
    inset: 0;
    z-index: 500;
@@ -200,26 +200,26 @@
    padding-bottom: calc(var(--space-xl) + env(safe-area-inset-bottom));
    opacity: 1;
    transition: opacity 0.3s var(--ease);
-   animation: doraVeil 0.5s ease both;
+   animation: miraVeil 0.5s ease both;
 }
 
-@keyframes doraVeil {
+@keyframes miraVeil {
    from { opacity: 0; }
    to   { opacity: 1; }
 }
 
-@keyframes doraPop {
+@keyframes miraPop {
    0%   { opacity: 0; transform: scale(0.82); }
    70%  { opacity: 1; transform: scale(1.045); }
    100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes doraRise {
+@keyframes miraRise {
    from { opacity: 0; transform: translateY(26px); }
    to   { opacity: 1; transform: translateY(0); }
 }
 
-.dora-welcome-inner {
+.mira-welcome-inner {
    width: 100%;
    display: flex;
    flex-direction: column;
@@ -228,8 +228,8 @@
    gap: 0;
 }
 
-/* avatar: círculo rosa com o cabide da marca (o "D" do markup fica escondido) */
-.dora-avatar {
+/* avatar: círculo rosa com o cabide da marca (o "M" do markup fica escondido) */
+.mira-avatar {
    width: 84px;
    height: 84px;
    border-radius: 50%;
@@ -242,18 +242,18 @@
    background-position: center;
    background-size: 46px 46px;
    margin-bottom: var(--space-lg);
-   animation: doraPop 0.7s var(--ease-spring) 0.15s both;
+   animation: miraPop 0.7s var(--ease-spring) 0.15s both;
 }
 
 /* a fala vira a manchete central, sem balão */
-.dora-bubble {
+.mira-bubble {
    background: transparent;
    box-shadow: none;
    padding: 0;
-   animation: doraRise 0.6s var(--ease-spring) 0.3s both;
+   animation: miraRise 0.6s var(--ease-spring) 0.3s both;
 }
 
-.dora-bubble p {
+.mira-bubble p {
    font-family: var(--font-display);
    font-size: 26px;
    font-weight: 800;
@@ -262,7 +262,7 @@
    color: var(--text);
 }
 
-.dora-bubble p + p {
+.mira-bubble p + p {
    font-family: var(--font);
    font-size: var(--text-sm);
    font-weight: 500;
@@ -272,7 +272,7 @@
    margin-top: var(--space-sm);
 }
 
-.dora-form {
+.mira-form {
    width: 100%;
    display: flex;
    flex-direction: column;
@@ -280,7 +280,7 @@
    margin-top: var(--space-xl);
 }
 
-.dora-form input {
+.mira-form input {
    width: 100%;
    padding: 17px 24px;
    border: 1.5px solid transparent;
@@ -293,22 +293,22 @@
    outline: none;
    box-shadow: 0 14px 34px rgba(76, 110, 72, 0.12);
    transition: border-color var(--duration-base) var(--ease);
-   animation: doraRise 0.6s var(--ease-spring) 0.45s both;
+   animation: miraRise 0.6s var(--ease-spring) 0.45s both;
 }
 
-.dora-form input:focus {
+.mira-form input:focus {
    border-color: var(--primary);
 }
 
-.dora-form input::placeholder {
+.mira-form input::placeholder {
    color: #A9B4A2;
 }
 
-.dora-form .btn-primary {
-   animation: doraRise 0.6s var(--ease-spring) 0.55s both;
+.mira-form .btn-primary {
+   animation: miraRise 0.6s var(--ease-spring) 0.55s both;
 }
 
-.dora-skip {
+.mira-skip {
    align-self: center;
    color: var(--text-muted);
    font-size: var(--text-sm);
@@ -319,5 +319,5 @@
    text-underline-offset: 3px;
    padding: var(--space-sm);
    margin-top: var(--space-xs);
-   animation: doraVeil 0.5s ease 0.75s both;
+   animation: miraVeil 0.5s ease 0.75s both;
 }

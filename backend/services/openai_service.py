@@ -131,7 +131,7 @@ async def chat_with_stylist(
    else:
       wardrobe_summary = "guarda-roupa ainda vazio"
 
-   # se a pessoa disse o nome no onboarding, a Dora chama por ele de vez em quando
+   # se a pessoa disse o nome no onboarding, a Mira chama por ele de vez em quando
    name_line = f"\nO nome da pessoa é {name}. Chame pelo nome de vez em quando, de forma natural, sem exagerar." if name else ""
 
    # clima de agora, pra ela não sugerir casaco em dia de 35 graus
@@ -166,7 +166,7 @@ async def chat_with_stylist(
             + "\nUse essas peças-chave como âncora quando sugerir look pra essas ocasiões."
          )
 
-   system_prompt = f"""Você é Dora, uma estilista pessoal brasileira descontraída e prática.
+   system_prompt = f"""Você é Mira, uma estilista pessoal brasileira descontraída e prática.
 Você conhece o guarda-roupa do usuário e ajuda a montar looks, dar dicas de moda e responder dúvidas de estilo.
 Seja direta, simpática e use linguagem natural brasileira. Evite respostas longas demais.
 Quando sugerir um look, mencione as peças pelo tipo e cor.{name_line}{weather_line}{planned_line}{key_line}

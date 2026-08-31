@@ -29,7 +29,7 @@ const API = {
          return response
       } catch (e) {
          if (e.name === 'AbortError' && !externalSignal) return null
-         if (e.name === 'AbortError') throw e  // sinal externo (ex: Dora) — deixa o caller tratar
+         if (e.name === 'AbortError') throw e  // sinal externo (ex: Mira) — deixa o caller tratar
          return null  // erros de rede (TypeError: Failed to fetch, etc.)
       } finally {
          if (timeout) clearTimeout(timeout)
