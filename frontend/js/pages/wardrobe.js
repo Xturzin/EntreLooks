@@ -133,19 +133,19 @@ async loadStats() {
          <div class="mini-grid">
             ${data.most_worn.map(c => `
                <div class="mini-card">
-                  <img src="${c.image_url}" alt="${c.type || ''}">
-                  <div class="mini-card-badge">${c.wear_count}x</div>
+                  <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+                  <div class="mini-card-badge">${escapeHtml(c.wear_count)}x</div>
                </div>
             `).join('')}
          </div>
       ` : ''
 
       const neverWornBlock = data.never_worn.length > 0 ? `
-         <p class="wardrobe-stats-title">Esquecidas (${data.never_worn_count})</p>
+         <p class="wardrobe-stats-title">Esquecidas (${escapeHtml(data.never_worn_count)})</p>
          <div class="mini-grid">
             ${data.never_worn.map(c => `
                <div class="mini-card">
-                  <img src="${c.image_url}" alt="${c.type || ''}">
+                  <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
                </div>
             `).join('')}
          </div>
@@ -155,11 +155,11 @@ async loadStats() {
          <div class="wardrobe-stats">
             <div class="stats-summary">
                <div class="stats-card">
-                  <div class="stats-card-number">${data.total}</div>
+                  <div class="stats-card-number">${escapeHtml(data.total)}</div>
                   <div class="stats-card-label">peças</div>
                </div>
                <div class="stats-card">
-                  <div class="stats-card-number">${data.never_worn_count}</div>
+                  <div class="stats-card-number">${escapeHtml(data.never_worn_count)}</div>
                   <div class="stats-card-label">esquecidas</div>
                </div>
             </div>
@@ -422,8 +422,8 @@ async loadStats() {
       const types = ['all', ...new Set(this.clothes.map(c => c.type).filter(Boolean))]
 
       bar.innerHTML = types.map(type => `
-         <button class="filter-pill ${type === this.activeFilter ? 'active' : ''}" data-filter="${type}">
-            ${type === 'all' ? 'Todas' : type}
+         <button class="filter-pill ${type === this.activeFilter ? 'active' : ''}" data-filter="${escapeHtml(type)}">
+            ${type === 'all' ? 'Todas' : escapeHtml(type)}
          </button>
       `).join('')
 
@@ -616,12 +616,12 @@ async loadStats() {
          : ''
 
       grid.innerHTML = clothes.map(cloth => `
-         <div class="cloth-card" data-id="${cloth.id}">
-            <img src="${cloth.image_url}" alt="${cloth.type || 'Roupa'}" loading="lazy">
-            <button class="cloth-delete-btn" data-id="${cloth.id}" aria-label="Remover peça">×</button>
+         <div class="cloth-card" data-id="${escapeHtml(cloth.id)}">
+            <img src="${escapeHtml(cloth.image_url)}" alt="${escapeHtml(cloth.type || 'Roupa')}" loading="lazy">
+            <button class="cloth-delete-btn" data-id="${escapeHtml(cloth.id)}" aria-label="Remover peça">×</button>
             <div class="cloth-info">
-               <span class="cloth-type">${cloth.nickname || cloth.type || 'Peça'}</span>
-               ${cloth.color ? `<span class="cloth-color">${cloth.color}</span>` : ''}
+               <span class="cloth-type">${escapeHtml(cloth.nickname || cloth.type || 'Peça')}</span>
+               ${cloth.color ? `<span class="cloth-color">${escapeHtml(cloth.color)}</span>` : ''}
             </div>
          </div>
       `).join('') + loadMoreBtn

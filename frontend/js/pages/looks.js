@@ -282,7 +282,7 @@ const LooksPage = {
          if (cloth) {
             return `
                <button class="look-slot filled area-${slot.area}${fullMod}" data-slot="${slot.key}">
-                  <img src="${cloth.image_url}" alt="">
+                  <img src="${escapeHtml(cloth.image_url)}" alt="">
                </button>
             `
          }
@@ -319,8 +319,8 @@ const LooksPage = {
             : ''
 
          grid.innerHTML = clearBtn + pieces.map(c => `
-            <button class="picker-item ${c.id === currentId ? 'selected' : ''}" data-id="${c.id}">
-               <img src="${c.image_url}" alt="">
+            <button class="picker-item ${c.id === currentId ? 'selected' : ''}" data-id="${escapeHtml(c.id)}">
+               <img src="${escapeHtml(c.image_url)}" alt="">
             </button>
          `).join('')
       }
@@ -363,8 +363,8 @@ const LooksPage = {
          <div class="look-clothes">
             ${clothes.map(c => `
                <div class="look-item">
-                  <img src="${c.image_url}" alt="${c.type || ''}">
-                  <span>${c.type || ''}</span>
+                  <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+                  <span>${escapeHtml(c.type || '')}</span>
                </div>
             `).join('')}
          </div>
@@ -563,11 +563,11 @@ const LooksPage = {
          const look    = p.look || {}
          const clothes = (look.clothes || []).slice(0, 4)
          return `
-            <div class="planned-card" data-look="${look.id || ''}">
-               <button class="cloth-delete-btn planned-remove" data-plan="${p.id}" aria-label="Tirar do dia">×</button>
+            <div class="planned-card" data-look="${escapeHtml(look.id || '')}">
+               <button class="cloth-delete-btn planned-remove" data-plan="${escapeHtml(p.id)}" aria-label="Tirar do dia">×</button>
                <div class="planned-date">${this._formatDate(p.date)}</div>
                <div class="planned-thumbs">
-                  ${clothes.map(c => `<img src="${c.image_url}" alt="">`).join('')}
+                  ${clothes.map(c => `<img src="${escapeHtml(c.image_url)}" alt="">`).join('')}
                </div>
             </div>
          `
@@ -657,7 +657,7 @@ const LooksPage = {
 
       if (!response.ok) {
          const err        = await response.json()
-         result.innerHTML = `<p class="look-error">${err.detail || 'Erro ao gerar look'}</p>`
+         result.innerHTML = `<p class="look-error">${escapeHtml(err.detail || 'Erro ao gerar look')}</p>`
          result.classList.remove('hidden')
          return
       }
@@ -673,13 +673,13 @@ const LooksPage = {
       result.innerHTML = `
          <div class="look-card">
             <div class="look-header">
-               <span class="look-mode">${look.mode}</span>
+               <span class="look-mode">${escapeHtml(look.mode)}</span>
             </div>
             <div class="look-clothes">
                ${clothes.map(c => `
                   <div class="look-item">
-                     <img src="${c.image_url}" alt="${c.type || ''}">
-                     <span>${c.type || ''}</span>
+                     <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+                     <span>${escapeHtml(c.type || '')}</span>
                   </div>
                `).join('')}
             </div>
@@ -802,14 +802,14 @@ const LooksPage = {
          <h2 class="section-title">Looks salvos</h2>
          <div class="saved-grid">
             ${looks.map(look => `
-               <div class="saved-look-card" data-id="${look.id}">
-                  <button class="cloth-delete-btn" data-id="${look.id}" aria-label="Remover look">×</button>
+               <div class="saved-look-card" data-id="${escapeHtml(look.id)}">
+                  <button class="cloth-delete-btn" data-id="${escapeHtml(look.id)}" aria-label="Remover look">×</button>
                   <div class="saved-look-clothes">
                      ${(look.clothes || []).slice(0, 4).map(c => `
-                        <img src="${c.image_url}" alt="${c.type || ''}">
+                        <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
                      `).join('')}
                   </div>
-                  <span class="look-mode">${look.mode}</span>
+                  <span class="look-mode">${escapeHtml(look.mode)}</span>
                </div>
             `).join('')}
          </div>

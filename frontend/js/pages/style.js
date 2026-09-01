@@ -73,11 +73,11 @@ const StylePage = {
 
          <div class="stat-row">
             <div class="stat-card">
-               <div class="stat-number">${data.total}</div>
+               <div class="stat-number">${escapeHtml(data.total)}</div>
                <div class="stat-label">peças no armário</div>
             </div>
             <div class="stat-card">
-               <div class="stat-number">${data.top_styles[0]?.name || '-'}</div>
+               <div class="stat-number">${escapeHtml(data.top_styles[0]?.name || '-')}</div>
                <div class="stat-label">estilo predominante</div>
             </div>
          </div>
@@ -89,11 +89,11 @@ const StylePage = {
                   ${data.dominant_colors.map(c => `
                      <div class="color-row">
                         <span class="color-dot" style="background: ${colorHex(c.name)}"></span>
-                        <span class="color-name">${c.name}</span>
+                        <span class="color-name">${escapeHtml(c.name)}</span>
                         <div class="color-bar-wrap">
-                           <div class="color-bar" style="width: ${c.percentage}%"></div>
+                           <div class="color-bar" style="width: ${escapeHtml(c.percentage)}%"></div>
                         </div>
-                        <span class="color-pct">${c.percentage}%</span>
+                        <span class="color-pct">${escapeHtml(c.percentage)}%</span>
                      </div>
                   `).join('')}
                </div>
@@ -106,7 +106,7 @@ const StylePage = {
                <div class="tag-list">
                   ${data.top_styles.map(s => `
                      <span class="style-tag">
-                        ${s.name}<span class="tag-pct">${s.percentage}%</span>
+                        ${escapeHtml(s.name)}<span class="tag-pct">${escapeHtml(s.percentage)}%</span>
                      </span>
                   `).join('')}
                </div>
@@ -119,7 +119,7 @@ const StylePage = {
                <div class="tag-list">
                   ${data.top_types.map(t => `
                      <span class="style-tag">
-                        ${t.name}<span class="tag-pct">${t.count}</span>
+                        ${escapeHtml(t.name)}<span class="tag-pct">${escapeHtml(t.count)}</span>
                      </span>
                   `).join('')}
                </div>
@@ -132,7 +132,7 @@ const StylePage = {
                <div class="tag-list">
                   ${data.top_occasions.map(o => `
                      <span class="style-tag">
-                        ${o.name}<span class="tag-pct">${o.percentage}%</span>
+                        ${escapeHtml(o.name)}<span class="tag-pct">${escapeHtml(o.percentage)}%</span>
                      </span>
                   `).join('')}
                </div>

@@ -169,7 +169,7 @@ const HomePage = {
             if (container) {
                container.innerHTML = `
                   <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
-                     ${err.detail || 'Erro ao gerar look'}
+                     ${escapeHtml(err.detail || 'Erro ao gerar look')}
                   </p>
                `
                container.classList.remove('hidden')
@@ -190,12 +190,12 @@ const HomePage = {
       const clothes   = look.clothes || []
 
       container.innerHTML = `
-         <p class="home-look-title">Look sugerido - ${look.mode}</p>
+         <p class="home-look-title">Look sugerido - ${escapeHtml(look.mode)}</p>
          <div class="home-look-card">
             <div class="home-look-clothes">
                ${clothes.map(c => `
                   <div class="home-look-item">
-                     <img src="${c.image_url}" alt="${c.type || ''}">
+                     <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
                   </div>
                `).join('')}
             </div>

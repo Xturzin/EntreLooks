@@ -4,7 +4,7 @@ const AIPage = {
    render() {
       // cumprimenta pelo nome se a pessoa tiver dito à Mira no começo
       const name = greetingName()
-      const hi   = name ? `Oi, ${name}! ` : 'Oi! '
+      const hi   = name ? `Oi, ${escapeHtml(name)}! ` : 'Oi! '
 
       return `
          <div class="page ai-page">

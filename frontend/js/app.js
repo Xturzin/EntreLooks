@@ -7,6 +7,23 @@ const routes = {
    style:    StylePage,
 }
 
+// Escapa texto antes de ele entrar num innerHTML. Precisamos disso porque boa parte
+// do que a tela mostra é texto livre: o apelido e o nome que a pessoa digita, e os
+// campos que a IA preenche (tipo, cor, estilo, ocasião), que o banco aceita sem trava.
+// Sem escapar, um "<img onerror=...>" salvo como apelido roda junto com o app, e como
+// o token fica no localStorage a sessão vai junto.
+// A ordem importa: o & vem primeiro, senão ele escaparia de novo o & das trocas seguintes.
+function escapeHtml(valor) {
+   if (valor === null || valor === undefined || valor === '') return ''
+
+   return String(valor)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+}
+
 // nome que a pessoa escolheu (fica na conta). Usado nas saudações e no chat.
 let USER_NAME = null
 
