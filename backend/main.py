@@ -49,12 +49,15 @@ def root():
 @app.get("/health")
 def health_check():
    try:
-      from services.supabase_service import supabase
+      from services.supabase_service import check_database
       configured = bool(settings.SUPABASE_URL and settings.SUPABASE_KEY)
       return {
          "status": "ok",
          "environment": settings.ENVIRONMENT,
-         "supabase": "configured" if configured else "missing credentials"
+         "supabase": "configured" if configured else "missing credentials",
+         # o ping externo que mantém o Render acordado agora encosta no banco também.
+         # Sem isso o projeto do Supabase fica sem atividade e o plano free apaga ele.
+         "database": check_database() if configured else "skipped (sem credenciais)"
       }
    except Exception as e:
       return {"status": "error", "detail": str(e)}

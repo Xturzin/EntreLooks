@@ -61,3 +61,34 @@ async def update_user_name(token: str, name: str):
          json={"data": {"name": name}}
       )
       return response.json(), response.status_code
+
+def check_database() -> str:
+   """Encosta de leve no banco só pra saber se ele responde. Quem usa isso é o /health,
+   que leva um ping externo de dez em dez minutos: como o plano free do Supabase apaga
+   projeto que fica parado, é essa consulta que mantém o banco contando como ativo.
+
+   Vai de chave anon de propósito, que é a de menor privilégio. Com o RLS ligado e sem
+   ninguém logado ela não enxerga linha nenhuma, e é exatamente isso que a gente quer,
+   porque o objetivo aqui é saber se o PostgREST responde, não ler dado.
+
+   Não passa pelo cliente do supabase-py porque o timeout padrão dele é de 120 segundos.
+   Numa queda do banco o /health ficaria dois minutos pendurado e o monitor externo
+   entenderia que a API inteira caiu, que é justamente o que não pode acontecer."""
+   try:
+      response = httpx.get(
+         f"{settings.SUPABASE_URL}/rest/v1/clothes",
+         params={"select": "id", "limit": "1"},
+         headers={
+            "apikey": settings.SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_ANON_KEY}"
+         },
+         timeout=4.0
+      )
+   except Exception as e:
+      # só o nome da exceção. O /health é público, então nada de detalhe interno no corpo
+      return f"unreachable ({type(e).__name__})"
+
+   if response.status_code >= 400:
+      return f"error (HTTP {response.status_code})"
+
+   return "ok"
