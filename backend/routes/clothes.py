@@ -65,12 +65,17 @@ async def upload_clothing(
 
    image_url = supabase.storage.from_("clothes").get_public_url(storage_path)
 
-   # salva no banco
+   # salva no banco. A IA às vezes devolve alguma chave extra que não existe como
+   # coluna, e isso derrubaria o insert inteiro, então copiamos só os quatro campos
+   # que a tabela conhece. O que não veio fica None, igual ao caminho de erro acima.
    cloth = {
-      "id":       cloth_id,
-      "user_id":  user.id,
+      "id":        cloth_id,
+      "user_id":   user.id,
       "image_url": image_url,
-      **categories
+      "type":      categories.get("type"),
+      "color":     categories.get("color"),
+      "style":     categories.get("style"),
+      "occasion":  categories.get("occasion")
    }
 
    result = supabase.table("clothes").insert(cloth).execute()

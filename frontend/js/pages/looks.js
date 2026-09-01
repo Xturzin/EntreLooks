@@ -648,7 +648,13 @@ const LooksPage = {
       startMsgRotation('generate-btn')
       result.classList.add('hidden')
 
-      const response = await API.post('/looks/generate', { mode: this.activeMode })
+      // o clima vem da Home (que pede a localização uma vez) e fica guardado no app,
+      // então aqui a gente só reaproveita pra IA não sugerir casaco em dia quente
+      const payload = { mode: this.activeMode }
+      const weather = getWeather()
+      if (weather) payload.weather = weather
+
+      const response = await API.post('/looks/generate', payload)
 
       btn.disabled = false
       stopMsgRotation('generate-btn', 'Gerar look')

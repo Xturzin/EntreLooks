@@ -157,21 +157,34 @@ const StylePage = {
 
    async generate() {
       const btn = document.getElementById('btn-generate-summary')
+
+      // o rótulo muda conforme já existe análise ou não, então guarda o atual pra
+      // devolver o mesmo se a geração não vingar
+      let restoreLabel = btn.textContent
+
       btn.disabled    = true
       btn.textContent = 'Analisando...'
 
-      const response = await API.post('/style/generate', {})
-      if (!response) return
+      try {
+         const response = await API.post('/style/generate', {})
+         if (!response) return
 
-      if (!response.ok) {
-         const err = await response.json().catch(() => ({}))
-         showToast(err.detail || 'Erro ao gerar análise. Tente novamente.', 'error')
-         btn.disabled    = false
-         btn.textContent = 'Tentar novamente'
-         return
+         if (!response.ok) {
+            const err = await response.json().catch(() => ({}))
+            showToast(err.detail || 'Erro ao gerar análise. Tente novamente.', 'error')
+            restoreLabel = 'Tentar novamente'
+            return
+         }
+
+         this.renderProfile(await response.json())
+      } finally {
+         // quando dá certo o renderProfile refaz a tela inteira e esse botão sai do
+         // DOM, então só faz sentido reativar o que ainda está na página
+         if (btn.isConnected) {
+            btn.disabled    = false
+            btn.textContent = restoreLabel
+         }
       }
-
-      this.renderProfile(await response.json())
    },
 
    _downloadBlob(blob, name) {
