@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from dependencies import get_current_user
-from services.supabase_service import sign_up_user, sign_in_user, update_user_name
+from services.supabase_service import sign_up_user, sign_in_user, update_user_name, refresh_session
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -11,6 +11,9 @@ class AuthRequest(BaseModel):
 
 class NameUpdate(BaseModel):
    name: str
+
+class RefreshRequest(BaseModel):
+   refresh_token: str
 
 @router.post("/signup")
 async def signup(data: AuthRequest):
@@ -34,7 +37,32 @@ async def login(data: AuthRequest):
       else:
          detail = "Email ou senha incorretos"
       raise HTTPException(status_code=401, detail=detail)
-   return {"token": result.get("access_token")}
+
+   # o refresh token vem junto na resposta do Supabase. Sem devolver ele aqui, o app
+   # ficaria só com o access token, que vence em uma hora e derruba a pessoa no meio do uso.
+   return {
+      "token":         result.get("access_token"),
+      "refresh_token": result.get("refresh_token")
+   }
+
+@router.post("/refresh")
+async def refresh(data: RefreshRequest):
+   """Troca o refresh token por um par novo. Não passa por get_current_user de
+   propósito: quem chama aqui está justamente com o access token vencido, então
+   exigir um token válido mataria o endpoint."""
+   result, status = await refresh_session(data.refresh_token)
+
+   if status >= 400:
+      raise HTTPException(status_code=401, detail="Sessão expirada. Entre de novo.")
+
+   access_token  = result.get("access_token")
+   refresh_token = result.get("refresh_token")
+
+   # sem o par completo não dá pra seguir: o app precisa dos dois pra renovar de novo depois
+   if not access_token or not refresh_token:
+      raise HTTPException(status_code=401, detail="Sessão expirada. Entre de novo.")
+
+   return {"access_token": access_token, "refresh_token": refresh_token}
 
 @router.get("/me")
 async def get_me(user=Depends(get_current_user)):

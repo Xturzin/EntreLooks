@@ -125,7 +125,7 @@ const LoginPage = {
             return
          }
 
-         Auth.setToken(data.token)
+         Auth.setSession(data.token, data.refresh_token)
          showApp()
 
       } catch (e) {

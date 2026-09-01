@@ -114,7 +114,7 @@ function showOnboarding() {
 }
 
 function logout() {
-   Auth.clearToken()
+   Auth.clearSession()
    localStorage.removeItem('el_onboarded')
    AIPage.history = []
    showAuthPage()
@@ -171,21 +171,24 @@ function stopMsgRotation(elementId, originalText) {
    if (el) el.textContent = originalText
 }
 
-// Volta do login social: o Supabase devolve o token (ou um erro) no fim da URL,
-// depois do #. A gente pega o token, guarda e limpa a URL antes de seguir.
+// Volta do login social: o Supabase devolve os tokens (ou um erro) no fim da URL,
+// depois do #. A gente pega, guarda e limpa a URL antes de seguir.
 function captureOAuthRedirect() {
    const hash = window.location.hash
    if (!hash || (!hash.includes('access_token=') && !hash.includes('error='))) return
 
-   const params = new URLSearchParams(hash.substring(1))
-   const token  = params.get('access_token')
-   const error  = params.get('error_description') || params.get('error')
+   const params       = new URLSearchParams(hash.substring(1))
+   const token        = params.get('access_token')
+   // o refresh vem no mesmo hash; sem guardar ele, quem entra pelo Google fica
+   // uma hora logado e cai no login igual antes
+   const refreshToken = params.get('refresh_token')
+   const error        = params.get('error_description') || params.get('error')
 
-   // tira o token da URL pra não ficar exposto nem atrapalhar o roteamento por hash
+   // tira os tokens da URL pra não ficarem expostos nem atrapalhar o roteamento por hash
    history.replaceState(null, '', window.location.pathname)
 
    if (token) {
-      Auth.setToken(token)
+      Auth.setSession(token, refreshToken)
    } else if (error) {
       // login cancelado ou com falha: avisa assim que a tela montar
       setTimeout(() => showToast('Não foi possível entrar com o Google. Tente de novo.', 'error'), 300)

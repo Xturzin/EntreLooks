@@ -31,6 +31,21 @@ async def sign_in_user(email: str, password: str):
       )
       return response.json(), response.status_code
 
+async def refresh_session(refresh_token: str):
+   """Troca um refresh token por um par novo de tokens. O Supabase rotaciona: cada
+   renovação devolve um refresh token novo e derruba o anterior, então quem chama
+   precisa guardar o que voltou aqui, senão a próxima renovação falha."""
+   async with httpx.AsyncClient(timeout=15.0) as client:
+      response = await client.post(
+         f"{settings.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
+         headers={
+            "apikey": settings.SUPABASE_ANON_KEY,
+            "Content-Type": "application/json"
+         },
+         json={"refresh_token": refresh_token}
+      )
+      return response.json(), response.status_code
+
 async def update_user_name(token: str, name: str):
    """Grava o nome escolhido no user_metadata da conta, usando o token da própria
    pessoa. O campo 'data' é mesclado no metadata, então dados do login social
