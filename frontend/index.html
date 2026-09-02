@@ -32,6 +32,24 @@
    <meta name="twitter:card" content="summary">
    <meta name="twitter:title" content="EntreLooks">
    <meta name="twitter:description" content="Seu guarda-roupa inteligente com IA.">
+   <!-- Fontes da marca. Elas moravam num @import dentro do variables.css, e ali o
+        navegador só descobria que existiam depois de baixar e ler aquele arquivo, o que
+        punha três idas à rede em fila. Aqui ele enxerga tudo já na primeira leitura do
+        HTML e busca em paralelo com o CSS do app.
+
+        Os dois preconnect abrem a conexão antes de ela ser pedida: um para o CSS das
+        fontes e outro para os arquivos .woff2, que vêm de um domínio diferente. O
+        crossorigin do segundo não é enfeite. Arquivo de fonte é sempre buscado em modo
+        CORS anônimo, e sem o atributo o preconnect abriria uma conexão de tipo diferente
+        da que vai ser usada de verdade, então ela seria descartada e o navegador
+        precisaria abrir outra do zero, que é justamente o que se quer evitar.
+
+        O display=swap continua na URL: é ele que faz o texto aparecer na fonte do
+        sistema enquanto a definitiva não chega, em vez de deixar a tela sem texto. -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&amp;family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,500&amp;display=swap">
+
    <link rel="stylesheet" href="css/reset.css">
    <link rel="stylesheet" href="css/variables.css">
    <link rel="stylesheet" href="css/main.css">

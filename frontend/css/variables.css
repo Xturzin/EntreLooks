@@ -3,7 +3,10 @@
    formas macias e sombras difusas. Estrutura e nomes de variável mantidos
    pra não quebrar o CSS de cada tela. */
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap');
+/* As fontes Sora e Figtree são carregadas no index.html, não mais aqui. Um @import
+   dentro de CSS só começa a baixar depois que este arquivo inteiro chegou e foi lido,
+   o que enfileirava três idas à rede: primeiro o HTML, depois este CSS, e só então o
+   CSS do Google. Declaradas no HTML, as três saem em paralelo. */
 
 :root {
    /* cores base */
