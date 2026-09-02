@@ -206,3 +206,19 @@
 .btn-share-style {
    margin-top: var(--space-md);
 }
+
+/* Desktop, a partir de 720px. A conta do breakpoint está no main.css. */
+@media (min-width: 720px) {
+   /* tela de leitura, feita de barras de cor e lista de tags. Barra de cor muito
+      comprida faz perder a noção de proporção entre uma cor e outra, então para
+      em 800 e fica centralizada. */
+   .style-page {
+      max-width: 800px;
+      margin: 0 auto;
+   }
+
+   /* dois cards fixos, mesmo motivo dos outros dois pares de estatística */
+   .stat-row {
+      max-width: 520px;
+   }
+}

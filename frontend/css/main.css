@@ -146,3 +146,33 @@ button:active:not(:disabled),
 .toast.toast-error::before {
    background: var(--accent);
 }
+
+/* ==========================================================================
+   Desktop, a partir de 720px.
+
+   O 720 saiu da conta do card de peça, não de tabela de framework: no celular
+   ele mede uns 217px, e três lado a lado pedem 3x217 mais os dois gaps mais o
+   padding, o que dá 707. Arredondado pra 720.
+
+   Abaixo desse ponto nada daqui vale, então o celular continua exatamente como
+   estava. Os outros arquivos têm blocos iguais a este, cada um cuidando da sua
+   tela.
+   ========================================================================== */
+@media (min-width: 720px) {
+   /* 1200 é a largura em que cinco peças caem com uns 222px cada, praticamente
+      o mesmo tamanho que elas já têm no celular. A ideia é essa: manter a peça
+      no tamanho que a gente sabe que funciona e mostrar mais delas de uma vez,
+      em vez de inchar cada card. Sem teto, numa tela de 2560 o conteúdo iria de
+      ponta a ponta e ficaria ruim de ler. */
+   #app {
+      max-width: 1200px;
+   }
+
+   /* num container duas vezes e meia mais largo, 18px de margem lateral deixa o
+      conteúdo encostado na borda. Só o lado muda, o respiro de cima e de baixo
+      continua o mesmo. */
+   .page {
+      padding-left: var(--space-lg);
+      padding-right: var(--space-lg);
+   }
+}

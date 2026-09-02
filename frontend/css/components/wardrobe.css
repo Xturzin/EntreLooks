@@ -418,3 +418,21 @@
 .edit-save {
    margin-top: var(--space-sm);
 }
+
+/* Desktop, a partir de 720px. A conta do breakpoint está no main.css. */
+@media (min-width: 720px) {
+   /* a regra base continua 1fr 1fr de propósito. Se o auto-fill valesse também
+      pro celular, num iPhone SE (320px de tela, 284 de largura útil) não caberiam
+      duas colunas de 190 mais o gap, e a grade despencaria pra uma coluna só.
+      Aqui em cima da faixa de 720 isso não acontece. */
+   .clothes-grid {
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+   }
+
+   /* são sempre dois cards, fixos no HTML, então espalhar não ajuda: sem teto
+      eles virariam dois retângulos de mais de 500px com um número no meio. O
+      limite segura o tamanho de ficha que eles têm hoje. */
+   .stats-summary {
+      max-width: 520px;
+   }
+}

@@ -193,3 +193,20 @@
    margin-bottom: var(--space-md);
    height: 36px;
 }
+
+/* Desktop, a partir de 720px. A conta do breakpoint está no main.css. */
+@media (min-width: 720px) {
+   /* a home é uma pilha de widgets pra ler de cima pra baixo, não uma galeria.
+      Espalhada em 1200 a saudação e o clima ficariam perdidos numa faixa larga
+      demais, então ela para em 900 e fica centralizada. */
+   .home-page {
+      max-width: 900px;
+      margin: 0 auto;
+   }
+
+   /* dois cards fixos no HTML, mesmo caso do armário: teto pra eles não virarem
+      dois painéis gigantes com um número dentro. */
+   .home-stats {
+      max-width: 520px;
+   }
+}

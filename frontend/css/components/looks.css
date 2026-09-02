@@ -474,3 +474,24 @@
    background: var(--bg);
    border-radius: 12px;
 }
+
+/* Desktop, a partir de 720px. A conta do breakpoint está no main.css. */
+@media (min-width: 720px) {
+   /* mesma lógica do armário: base em 1fr 1fr pro celular, auto-fill só aqui */
+   .saved-grid,
+   .planned-grid {
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+   }
+
+   /* a colagem é o único lugar do app que precisa encolher em vez de crescer.
+      Ela é 3 por 4, então num container de 1148 ela viraria 1148 por 1531 e a
+      pessoa teria que rolar a página pra ver um look inteiro. Fora que as calhas
+      de acessório são fixas em 64px e não acompanham o centro, então o meio
+      esticaria e as laterais virariam tirinhas. Em 520 ela fica uns 17% maior
+      que hoje e ainda cabe na altura da tela. */
+   .look-canvas {
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+   }
+}

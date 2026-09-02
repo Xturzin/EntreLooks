@@ -92,3 +92,29 @@
    opacity: 0.55;
    box-shadow: none;
 }
+
+/* Desktop, a partir de 720px. A conta do breakpoint está no main.css. */
+@media (min-width: 720px) {
+   /* aqui o certo é limitar, não alargar. Linha de conversa muito comprida cansa
+      de ler, e o que faz um chat parecer chat é a alternância entre o balão de um
+      lado e o do outro. Numa coluna de 720 com o balão menor essa alternância
+      fica mais clara do que é hoje. */
+   .ai-page {
+      max-width: 720px;
+      margin: 0 auto;
+   }
+
+   /* 80% de 668 daria 534px, uns 82 caracteres por linha, e os dois lados ficariam
+      quase se encostando no meio. Em 70% cada balão dá uns 468px, perto de 72
+      caracteres, e sobra folga entre a fala da pessoa e a da Mira. No celular
+      continua 80%. */
+   .chat-bubble {
+      max-width: 70%;
+   }
+
+   /* o campo acompanha a largura da conversa, senão sobraria uma pílula de 448
+      embaixo de uma coluna de 720. */
+   .chat-input-area {
+      max-width: 720px;
+   }
+}
