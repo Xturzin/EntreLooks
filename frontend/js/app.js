@@ -29,6 +29,13 @@ let USER_NAME = null
 
 function setUserName(name) {
    USER_NAME = name || null
+
+   // A saudação da home pode já estar na tela escrita sem o nome, porque o /auth/me
+   // deixou de ser esperado antes de abrir o app. Se ela estiver visível, reescreve
+   // agora que o nome chegou. O setupGreeting recalcula tudo a partir do relógio,
+   // então chamar de novo é seguro. Se a pessoa já trocou de aba, o elemento não
+   // está mais na tela e não há o que corrigir, então sai sem fazer nada.
+   if (document.getElementById('greeting-label')) HomePage.setupGreeting()
 }
 
 // só o primeiro nome, pra saudação ficar leve ("Bom dia, Ana")
@@ -72,11 +79,18 @@ function showAuthPage() {
 async function showApp() {
    document.getElementById('auth-view').classList.add('hidden')
 
-   // pega o nome guardado na conta pra saudação já sair certa
-   const meRes = await API.get('/auth/me')
-   // se o token venceu, o 401 já mandou pro login; não segue mostrando o app
-   if (!Auth.isAuthenticated()) return
-   if (meRes?.ok) setUserName((await meRes.json()).name)
+   // Pede o nome, mas não espera. Ele serve só pra saudação virar "Boa tarde, Ana"
+   // em vez de "Boa tarde", e segurar a tela por causa disso custava uns 450ms de app
+   // escondido: é uma ida e volta até o Supabase, que fica longe do nosso servidor.
+   // Quando a resposta chega, o setUserName reescreve a saudação sozinho.
+   //
+   // Sessão vencida não precisa de tratamento aqui. O API.request tenta renovar com o
+   // refresh token e, se nem isso resolver, ele mesmo limpa a sessão e chama a tela de
+   // login, que esconde o #app de volta. Por isso o retorno nem é olhado: se veio null,
+   // a pessoa já está indo pro login.
+   API.get('/auth/me').then(async (resposta) => {
+      if (resposta?.ok) setUserName((await resposta.json()).name)
+   })
 
    // mostra o app já aqui. O onboarding e a Mira aparecem por cima numa camada
    // flutuante, e quando a Mira manda pro armário o container precisa estar visível,
