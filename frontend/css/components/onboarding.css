@@ -1,3 +1,8 @@
+/* o véu cobre a tela inteira. Ele já teve um max-width aqui, mas somado ao
+   inset: 0 isso o encolhia pra uma faixa de 480px no meio, e em tela grande dava
+   pra ver o fundo do app aparecendo dos dois lados. No celular nunca apareceu
+   porque a tela toda tem menos de 480. O limite não sumiu, desceu pro conteúdo
+   na regra logo abaixo. */
 .onboarding-overlay {
    position: fixed;
    inset: 0;
@@ -6,8 +11,23 @@
    z-index: 500;
    display: flex;
    flex-direction: column;
+}
+
+/* quem fica em coluna estreita é o conteúdo, não o véu. Os três filhos diretos
+   precisam do mesmo limite: sem ele, em tela larga o texto do slide encosta na
+   borda esquerda, o botão Próximo estica de ponta a ponta e o Pular vai parar no
+   canto da tela, longe de tudo.
+
+   O width: 100% não é enredo: numa coluna flex, margem lateral automática cancela
+   o stretch que vem por padrão, e sem ele os três encolheriam para o tamanho do
+   próprio conteúdo. */
+.onboarding-header,
+.onboarding-slides,
+.onboarding-footer {
+   width: 100%;
    max-width: 480px;
-   margin: 0 auto;
+   margin-left: auto;
+   margin-right: auto;
 }
 
 .onboarding-header {
@@ -183,13 +203,15 @@
 
 /* boas-vindas da Mira: véu claro translúcido com o app embaçado atrás, avatar
    da marca no centro e a pergunta em destaque. Menos invasivo que a tela cheia
-   antiga. Mesma estrutura do mira-welcome.js. */
+   antiga. Mesma estrutura do mira-welcome.js.
+
+   O véu cobre a tela toda e o limite de largura mora no .mira-welcome-inner. Se
+   ele ficasse aqui, junto com o inset: 0, o embaçado pegaria só a faixa do meio e
+   as bordas da tela continuariam nítidas, que era o que acontecia antes. */
 .mira-welcome {
    position: fixed;
    inset: 0;
    z-index: 500;
-   max-width: 480px;
-   margin: 0 auto;
    background: rgba(245, 248, 241, 0.78);
    -webkit-backdrop-filter: blur(7px) saturate(0.85);
    backdrop-filter: blur(7px) saturate(0.85);
@@ -219,8 +241,13 @@
    to   { opacity: 1; transform: translateY(0); }
 }
 
+/* é aqui que mora o limite de largura agora. O .mira-welcome é flex com
+   justify-content: center, então ele já centraliza isto sozinho e não precisa de
+   margem automática. Sem o teto, o campo de nome e o botão esticariam junto com a
+   tela, porque os dois são width: 100%. */
 .mira-welcome-inner {
    width: 100%;
+   max-width: 480px;
    display: flex;
    flex-direction: column;
    align-items: center;
