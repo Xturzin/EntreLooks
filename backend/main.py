@@ -8,12 +8,21 @@ from routes.ai import router as ai_router
 from routes.style import router as style_router
 import logging
 import time
+from contextlib import asynccontextmanager
 from fastapi import Request
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("entrelooks")
 
-app = FastAPI(title="EntreLooks API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+   # nada a fazer na subida. No encerramento, fecha os clientes HTTP que o supabase_service
+   # mantém vivos entre as requisições, senão o httpx reclama de conexão aberta ao desligar.
+   yield
+   from services.supabase_service import fechar_clientes
+   await fechar_clientes()
+
+app = FastAPI(title="EntreLooks API", version="1.0.0", lifespan=lifespan)
 
 _cors_origins = (
    ["*"] if settings.ENVIRONMENT != "production"
