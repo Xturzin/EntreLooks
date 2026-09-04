@@ -66,3 +66,48 @@
    from { transform: scale(0.88); }
    to   { transform: scale(1); }
 }
+
+/* Desktop, a partir de 720px: a barra flutuante do rodapé vira um trilho fixo na lateral
+   esquerda. Nenhum HTML muda. O #app vira linha (no main.css) e o order abaixo traz a nav
+   pra frente do conteúdo, já que no HTML ela vem depois. */
+@media (min-width: 720px) {
+   #bottom-nav {
+      /* sai do rodapé fixo e passa a ser uma coluna comum, na altura cheia do #app */
+      position: static;
+      order: -1;
+      transform: none;
+      flex-direction: column;
+      justify-content: flex-start;
+      width: var(--rail-width);
+      max-width: none;
+      height: auto;
+      flex-shrink: 0;
+      gap: var(--space-xs);
+      padding: var(--space-md) var(--space-sm);
+      border-radius: 0;
+      border-right: 1px solid var(--border);
+      box-shadow: none;
+   }
+
+   .tab-item {
+      /* no celular os itens dividem a largura (flex: 1). No trilho cada um tem altura
+         própria e alinha ícone e rótulo à esquerda, como num menu lateral. */
+      flex: 0 0 auto;
+      height: 46px;
+      justify-content: flex-start;
+      gap: var(--space-sm);
+      padding: 0 var(--space-md);
+      border-radius: var(--radius-md);
+   }
+
+   /* no celular só o rótulo da aba ativa aparece; no trilho todos os cinco aparecem */
+   .tab-item span {
+      display: inline;
+   }
+
+   .tab-item.active {
+      /* a mesma pílula verde, mas ocupando a linha inteira em vez de crescer no meio da
+         barra (lá ela virava flex: 1.65) */
+      flex: 0 0 auto;
+   }
+}

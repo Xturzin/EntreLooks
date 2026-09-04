@@ -113,8 +113,14 @@
    }
 
    /* o campo acompanha a largura da conversa, senão sobraria uma pílula de 448
-      embaixo de uma coluna de 720. */
+      embaixo de uma coluna de 720. A partir do trilho ele também encosta perto do fim do
+      conteúdo (sem barra no rodapé pra descontar) e desloca meia-largura de trilho pra
+      direita, pra ficar centrado no conteúdo e não na tela, igual ao toast. A largura vira
+      a do conteúdo (tela menos o trilho e as duas margens), ainda limitada aos 720. */
    .chat-input-area {
       max-width: 720px;
+      bottom: var(--space-lg);
+      width: calc(100% - var(--rail-width) - 2 * var(--space-lg));
+      transform: translateX(calc(-50% + var(--rail-width) / 2));
    }
 }

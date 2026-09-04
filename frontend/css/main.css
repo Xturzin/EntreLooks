@@ -164,8 +164,39 @@ button:active:not(:disabled),
       no tamanho que a gente sabe que funciona e mostrar mais delas de uma vez,
       em vez de inchar cada card. Sem teto, numa tela de 2560 o conteúdo iria de
       ponta a ponta e ficaria ruim de ler. */
+   /* a partir daqui o #app deixa de ser uma pilha (conteúdo em cima, barra embaixo) e vira
+      uma linha: trilho à esquerda, conteúdo à direita. O trilho em si é estilizado no
+      navbar.css; aqui só viramos o eixo e guardamos a largura dele num token, que o toast e
+      o campo do chat também usam pra se realinhar. */
+   :root {
+      --rail-width: 200px;
+   }
+
    #app {
       max-width: 1200px;
+      flex-direction: row;
+   }
+
+   #page-content {
+      /* sem barra no rodapé, some o respiro que reservávamos pra ela não cobrir conteúdo.
+         E o min-width: 0 impede que as grades empurrem a largura e criem rolagem horizontal
+         num filho de flex. */
+      padding-bottom: 0;
+      min-width: 0;
+   }
+
+   /* o toast é position: fixed centrado na tela (left: 50%). Com o trilho ocupando a
+      esquerda, o centro da tela não é mais o centro do conteúdo, que começa depois do
+      trilho. Deslocar meia-largura de trilho pra direita recoloca o toast no meio do
+      conteúdo, e a conta dá exatamente --rail-width / 2 tanto quando o #app preenche a tela
+      quanto quando ele para em 1200 e fica centralizado. O resto do transform (o pulo e a
+      escala da animação) continua igual ao original. */
+   .toast {
+      transform: translateX(calc(-50% + var(--rail-width) / 2)) translateY(14px) scale(0.9);
+   }
+
+   .toast.toast-visible {
+      transform: translateX(calc(-50% + var(--rail-width) / 2)) translateY(0) scale(1);
    }
 
    /* num container duas vezes e meia mais largo, 18px de margem lateral deixa o
