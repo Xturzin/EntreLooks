@@ -1,3 +1,16 @@
+# Referencia do que esta configurado no painel do Render, nao fonte da verdade.
+#
+# ATENCAO: este arquivo NAO esta sendo aplicado como Blueprint hoje. Blueprint exige o
+# render.yaml na RAIZ do repositorio, e este esta em backend/. O servico foi criado a mao
+# pelo painel, e e la que os valores valem de verdade.
+#
+# Entao pra que ele existe: pra nao ter informacao de infra que so mora dentro de um painel
+# web. Se a conta do Render sumir ou alguem precisar recriar o servico, esta aqui o que
+# estava configurado. Mudou algo no painel, atualize aqui junto.
+#
+# O PYTHON_VERSION abaixo espelha o painel. Trocar a versao de Python EM PRODUCAO e no
+# painel; mudar so este arquivo nao surte efeito nenhum enquanto ele nao for Blueprint.
+
 services:
   - type: web
     name: entrelooks-api
@@ -5,6 +18,10 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      # 3.12 e o teto: o onnxruntime 1.19.2 nao tem wheel pra 3.13. O porque completo esta
+      # no backend/requirements.txt e no .python-version da raiz.
+      - key: PYTHON_VERSION
+        value: "3.12"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY

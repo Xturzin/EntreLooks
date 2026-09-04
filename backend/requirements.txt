@@ -1,19 +1,49 @@
+# Versao do Python: 3.12. Quem trava isso e o onnxruntime 1.19.2, que so tem wheel ate
+# cp312 (nao existe cp313), e o rembg 2.0.57, que declara requires_python <3.13. Subir pra
+# 3.13 obrigaria a mexer nos dois, e o rembg novo arrasta o Pillow junto (exige >=12.1),
+# que e justamente o que a gente decidiu nao mexer agora. Ver o .python-version na raiz.
+
 # core
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
 python-dotenv==1.0.1
 python-multipart==0.0.12
 
 # banco e auth
-supabase==2.7.4
+# O supabase subiu de 2.7.4 pra 2.31.0. As assinaturas que o projeto usa (upload,
+# get_public_url, auth.get_user e a cadeia table/select/eq/execute) foram conferidas uma a
+# uma e continuam iguais.
+supabase==2.31.0
+# httpx MANTIDO no 0.27.2, e nao foi por preferencia. A ideia era subir pro 0.28.1, mas o
+# openai 1.52 passa o argumento "proxies" na criacao do cliente e o httpx 0.28 removeu esse
+# argumento. Os dois juntos INSTALAM sem reclamar (o openai declara httpx<1, faixa larga
+# demais) e depois quebram no import com "AsyncClient.__init__() got an unexpected keyword
+# argument 'proxies'". Testado: openai 1.52 + httpx 0.28.1 quebra, openai 1.55.3 + httpx
+# 0.28.1 funciona. Ou seja, subir o httpx exige subir o openai junto, e o openai esta
+# congelado (motivo logo abaixo). O supabase 2.31 aceita httpx>=0.26,<0.29, entao o 0.27.2
+# convive bem com ele.
 httpx==0.27.2
+# pyjwt e cryptography sustentam a validacao local do JWT em ES256 no dependencies.py.
+# Sozinho o pyjwt so faz HS256: quem verifica curva eliptica e o cryptography. Se um dos
+# dois sumir, TODA rota autenticada para de funcionar. Os dois ja estao na versao mais
+# recente. O cryptography tem wheel pronto pra Linux, entao nao compila no build do Render.
 pyjwt==2.13.0
 cryptography==50.0.1
 
 # IA
+# MANTIDO no 1.52 de proposito, nao e abandono. O 3.x troca o cliente HTTP interno por
+# HTTPX2 e para de instalar o httpx junto, o que mexeria no mesmo httpx que o
+# supabase_service usa direto. O 1.52 atende bem o uso daqui, que e AsyncOpenAI apontado
+# pra Groq via base_url com chat.completions.create.
 openai==1.52.0
 
 # imagem (onnxruntime carregado sob demanda)
+# Pillow MANTIDO no 10.4 de proposito, nao e abandono. Subir daria dois majors de uma vez
+# (10 -> 12) justamente no image_service, que acabou de mudar com o redimensionamento
+# pre-IA e nao tem teste automatizado cobrindo. Se o recorte quebrasse, so apareceria numa
+# foto torta depois de ja estar em producao.
+# O onnxruntime e o rembg ficam onde estao pelo mesmo motivo do teto de Python la em cima:
+# o pin do onnxruntime e obrigatorio porque o rembg nao o traz mais como dependencia base.
 Pillow==10.4.0
 onnxruntime==1.19.2
 rembg==2.0.57

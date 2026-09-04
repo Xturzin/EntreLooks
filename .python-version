@@ -1,0 +1,11 @@
+# Versao do Python do projeto: 3.12.
+#
+# Pra que serve: o uv le este arquivo e cria o venv local ja na versao certa. Serve tambem
+# como documentacao da versao que a gente decidiu, junto com o motivo que esta no
+# backend/requirements.txt (o onnxruntime 1.19.2 nao tem wheel pra 3.13).
+#
+# O que este arquivo NAO faz: mandar em producao. No Render quem decide e a variavel de
+# ambiente PYTHON_VERSION configurada no painel, que tem precedencia sobre arquivo. E este
+# arquivo esta na raiz do repositorio, enquanto o root directory do servico e "backend",
+# entao provavelmente o Render nem chega a ler ele. Trocar a versao em producao e no painel.
+3.12
