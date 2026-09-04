@@ -1,0 +1,88 @@
+# Mantem o backend do Render acordado e, principalmente, o projeto Supabase contando como
+# ativo. O /health do backend consulta o banco, entao uma unica batida cobre os dois.
+#
+# Por que isso existe: o projeto Supabase anterior deste app foi APAGADO por inatividade,
+# com perda total dos dados. O plano free do Supabase pausa projeto com pouca atividade em
+# 7 dias, e projeto pausado por tempo demais e removido. Este workflow e a rede de seguranca
+# pra isso nao se repetir.
+#
+# Divisao de trabalho, e o motivo dela: quem mantem o Render quentinho de 10 em 10 minutos e
+# o cron-job.org, porque em repositorio privado o GitHub da 2000 minutos de Actions por mes
+# e cada execucao e cobrada com o minimo de 1 minuto. Bater de 10 em 10 minutos daria mais de
+# 3000 minutos e estouraria a cota. Entao aqui a gente roda 4 vezes por dia, o que gasta uns
+# 124 minutos por mes (6% da cota) e ja e 28 vezes mais do que o Supabase precisa pra nao
+# pausar. Se o cron-job.org morrer calado, este workflow ainda segura o dado.
+
+name: Ping de saude
+
+on:
+  schedule:
+    # ATENCAO: o GitHub agenda em UTC. Brasilia e UTC-3 e nao tem mais horario de verao,
+    # entao e so subtrair 3 horas pra ler em horario de Brasilia:
+    #   02:00 UTC = 23:00 BRT (do dia anterior)
+    #   10:00 UTC = 07:00 BRT
+    #   16:00 UTC = 13:00 BRT
+    #   22:00 UTC = 19:00 BRT
+    # Os quatro horarios caem dentro da janela diurna (6h as 24h BRT) de proposito, pra este
+    # workflow nao acordar o Render de madrugada e gastar hora da cota do Render a toa.
+    - cron: "0 2,10,16,22 * * *"
+  # permite disparar na mao pela aba Actions, pra testar sem esperar o horario
+  workflow_dispatch:
+
+# o job so faz um curl numa URL publica, entao nao precisa de permissao nenhuma no repo
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Bater no /health e conferir o banco
+        env:
+          # URL publica, nao e segredo: qualquer pessoa pode abrir isso no navegador
+          URL: https://entrelooks.onrender.com/health
+        run: |
+          # 4 tentativas com 45s de teto cada e 15s de espera entre elas. O teto por
+          # tentativa e curto pra uma conexao travada nao segurar o job, e as tentativas
+          # existem porque o Render no plano free demora cerca de um minuto pra acordar:
+          # se ele estiver dormindo, a primeira batida quase sempre estoura e a segunda
+          # ou a terceira pega o servico ja de pe. No pior caso o passo leva uns 4 minutos,
+          # bem dentro do timeout-minutes de 10.
+          TENTATIVAS=4
+
+          for i in $(seq 1 $TENTATIVAS); do
+            resposta=$(curl -sS --max-time 45 -w $'\n%{http_code}' "$URL" 2>/dev/null || true)
+            http=$(printf '%s' "$resposta" | tail -n1)
+            corpo=$(printf '%s' "$resposta" | sed '$d')
+
+            if [ "$http" = "200" ]; then
+              # Um ping que devolve verde com o banco morto seria pior que nao ter ping,
+              # entao nao basta o 200: o campo database precisa vir "ok". Ele fica
+              # "unreachable (...)" quando o backend responde mas nao alcanca o Supabase.
+              banco=$(printf '%s' "$corpo" | jq -r '.database // "campo ausente"')
+              if [ "$banco" = "ok" ]; then
+                echo "Tentativa $i: tudo certo. $corpo"
+                exit 0
+              fi
+              motivo="o backend respondeu 200 mas database=\"$banco\""
+            elif [ -z "$http" ] || [ "$http" = "000" ]; then
+              # o curl devolve 000 quando nem chegou a receber resposta (timeout, DNS,
+              # conexao recusada). Sem esse ramo a mensagem sairia como "HTTP 000",
+              # que nao diz nada pra quem abre o email de falha.
+              motivo="sem resposta do servidor (timeout ou falha de conexao)"
+            else
+              motivo="HTTP $http"
+            fi
+
+            echo "Tentativa $i falhou: $motivo"
+            if [ "$i" -lt "$TENTATIVAS" ]; then
+              sleep 15
+            fi
+          done
+
+          # chegou aqui, as 4 tentativas falharam. O ::error:: faz a mensagem aparecer em
+          # destaque no resumo da execucao, e o job vermelho dispara o email do GitHub.
+          echo "::error::O /health nao ficou saudavel depois de $TENTATIVAS tentativas. Ultimo motivo: $motivo"
+          echo "Ultimo corpo recebido: $corpo"
+          exit 1
