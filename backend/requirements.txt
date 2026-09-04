@@ -7,6 +7,8 @@ python-multipart==0.0.12
 # banco e auth
 supabase==2.7.4
 httpx==0.27.2
+pyjwt==2.13.0
+cryptography==50.0.1
 
 # IA
 openai==1.52.0
