@@ -19,18 +19,25 @@ _JWKS_URL = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
 
 # O PyJWKClient guarda o conjunto de chaves em memória e só vai à rede quando o cache está
 # vazio (primeira requisição, inclusive logo depois de cada restart do Render free) ou
-# quando ele expira. lifespan de 300s (5 min) é o teto de idade da cópia em cache: se o
-# Supabase trocar a chave de assinatura, a nova é pega em no máximo 5 min por esse caminho.
-_jwks_client = jwt.PyJWKClient(_JWKS_URL, cache_jwk_set=True, lifespan=300)
+# quando ele expira.
+#
+# lifespan de 6 horas, e não os 5 minutos que estavam aqui antes. O motivo: quando o cache
+# vence, a próxima requisição autenticada paga a busca do JWKS, que daqui até o Supabase
+# custa perto de 900ms. Com 5 minutos isso virava um pico de quase um segundo várias vezes
+# por hora, numa rota que normalmente responde em 200ms, e sem ganho nenhum: rotação de
+# chave já é detectada na hora pelo caminho do kid desconhecido logo abaixo, que não depende
+# deste prazo. Ou seja, o lifespan curto só servia como rede de segurança de uma rede de
+# segurança, e cobrava caro por isso.
+_jwks_client = jwt.PyJWKClient(_JWKS_URL, cache_jwk_set=True, lifespan=6 * 60 * 60)
 
 # Proteção contra kid desconhecido usado como ataque. Sozinho, o PyJWKClient rebusca o JWKS
 # toda vez que aparece um kid que ele não conhece (está no get_signing_key da lib), então
 # uma enxurrada de tokens com kid aleatório viraria uma enxurrada de buscas ao Supabase, um
 # jeito barato de derrubar o serviço. Por isso a rebusca forçada acontece no máximo uma vez
 # a cada _JANELA_REFETCH. 60s equilibra os dois lados: sob ataque, no máximo uma ida à rede
-# por minuto; e rotação legítima de chave é detectada em até 60s (ou em até 5 min pelo
-# lifespan, o que vier primeiro), folgado dentro do tempo em que o Supabase mantém a chave
-# antiga válida em paralelo com a nova.
+# por minuto; e rotação legítima de chave é detectada em até 60s, folgado dentro do tempo em
+# que o Supabase mantém a chave antiga válida em paralelo com a nova. É este caminho, e não
+# o lifespan, que garante que uma rotação seja percebida rápido.
 _JANELA_REFETCH = 60
 _ultimo_refetch_forcado = 0.0
 
