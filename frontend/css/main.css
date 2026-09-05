@@ -169,11 +169,20 @@ button:active:not(:disabled),
       navbar.css; aqui só viramos o eixo e guardamos a largura dele num token, que o toast e
       o campo do chat também usam pra se realinhar. */
    :root {
-      --rail-width: 200px;
+      /* 168 e o suficiente pro item mais largo do trilho (ícone 22 + respiro + "Armário")
+         sem sobrar faixa vazia. Antes eram 200, que deixavam o trilho parecendo uma lousa
+         branca larga, ainda mais porque o fundo dele é branco e quase não se distingue do
+         fundo da página. */
+      --rail-width: 168px;
    }
 
    #app {
-      max-width: 1200px;
+      /* sem teto aqui de propósito. Com teto, o #app (trilho + conteúdo) era centralizado
+         na tela, e como o trilho fica dentro dele o CONTEÚDO acabava empurrado pra direita:
+         em 1920 sobrava 560px de um lado e 360px do outro. Agora o trilho encosta na borda
+         esquerda, como barra lateral de aplicativo, e quem ganha teto e centralização é o
+         conteúdo, logo abaixo. */
+      max-width: none;
       flex-direction: row;
    }
 
@@ -183,6 +192,12 @@ button:active:not(:disabled),
          num filho de flex. */
       padding-bottom: 0;
       min-width: 0;
+      /* o teto saiu do #app e veio pra cá: assim o conteúdo fica centralizado no espaço que
+         sobra depois do trilho, em vez de colado nele. As margens automáticas absorvem a
+         folga dos dois lados por igual. */
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
    }
 
    /* o toast é position: fixed centrado na tela (left: 50%). Com o trilho ocupando a

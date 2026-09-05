@@ -82,6 +82,11 @@
       max-width: none;
       height: auto;
       flex-shrink: 0;
+      /* a regra base usa align-items: center, que na horizontal centraliza os cinco itens.
+         Virada pra coluna, ela passava a encolher cada item pro tamanho do conteúdo e
+         deixá-los boiando no meio de uma faixa branca larga. Aqui eles esticam e viram
+         linhas de menu de ponta a ponta do trilho. */
+      align-items: stretch;
       gap: var(--space-xs);
       padding: var(--space-md) var(--space-sm);
       border-radius: 0;
@@ -100,14 +105,27 @@
       border-radius: var(--radius-md);
    }
 
-   /* no celular só o rótulo da aba ativa aparece; no trilho todos os cinco aparecem */
+   /* No celular só o rótulo da aba ativa aparece, e por isso a regra base pinta o texto de
+      --tab-active (branco): lá ele só é visto sobre a pílula verde escura da aba ativa.
+      No trilho os cinco rótulos aparecem, e o fundo é branco, então branco no branco deixava
+      quatro deles invisíveis. Aqui o texto herda a cor do próprio botão, que já é apagada
+      pros inativos e clara pro ativo (que tem fundo escuro). */
    .tab-item span {
       display: inline;
+      color: inherit;
    }
 
    .tab-item.active {
       /* a mesma pílula verde, mas ocupando a linha inteira em vez de crescer no meio da
-         barra (lá ela virava flex: 1.65) */
+         barra (lá ela virava flex: 1.65). A cor clara vale pro ícone e pro rótulo, que
+         agora herda dela. */
       flex: 0 0 auto;
+      color: var(--tab-active);
+   }
+
+   /* inativo: cinza esverdeado do texto comum, e não o --tab-inactive da barra do celular,
+      que é claro demais pra ler sobre branco. */
+   .tab-item:not(.active) {
+      color: var(--text-muted);
    }
 }
