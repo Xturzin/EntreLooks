@@ -11,6 +11,13 @@ from services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/clothes", tags=["clothes"])
 
+# Rotas que so conversam com o Supabase sao "def" comum, e nao "async def", de proposito.
+# O cliente do supabase-py e sincrono: chamado de dentro de uma rota async, ele trava o
+# event loop inteiro enquanto espera a resposta, e as requisicoes passam a esperar uma pela
+# outra (medido em producao: 8 simultaneas custavam 4,3 vezes o tempo de uma). Declarando a
+# rota como def, o FastAPI roda ela numa threadpool e elas voltam a correr em paralelo.
+# As rotas que dao await em alguma coisa (IA, leitura de upload, outra corrotina) continuam
+# async, porque await so existe dentro de funcao async.
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
@@ -82,7 +89,7 @@ async def upload_clothing(
    return result.data[0]
 
 @router.get("/stats")
-async def wardrobe_stats(user=Depends(get_current_user)):
+def wardrobe_stats(user=Depends(get_current_user)):
    result = (
       supabase.table("clothes")
       .select("id, type, color, image_url, wear_count, last_worn_at")
@@ -111,7 +118,7 @@ async def wardrobe_stats(user=Depends(get_current_user)):
    }
 
 @router.delete("/{cloth_id}")
-async def delete_clothing(cloth_id: str, user=Depends(get_current_user)):
+def delete_clothing(cloth_id: str, user=Depends(get_current_user)):
    result = (
       supabase.table("clothes")
       .select("id")
@@ -134,7 +141,7 @@ async def delete_clothing(cloth_id: str, user=Depends(get_current_user)):
    return {"deleted": True}
 
 @router.patch("/{cloth_id}")
-async def update_clothing(
+def update_clothing(
    cloth_id: str,
    data: ClothUpdate,
    user=Depends(get_current_user)
@@ -159,7 +166,7 @@ async def update_clothing(
    return result.data[0]
 
 @router.get("/")
-async def list_clothes(
+def list_clothes(
    user=Depends(get_current_user),
    limit: int = 50,
    offset: int = 0

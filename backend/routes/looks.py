@@ -10,6 +10,13 @@ from services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/looks", tags=["looks"])
 
+# Rotas que so conversam com o Supabase sao "def" comum, e nao "async def", de proposito.
+# O cliente do supabase-py e sincrono: chamado de dentro de uma rota async, ele trava o
+# event loop inteiro enquanto espera a resposta, e as requisicoes passam a esperar uma pela
+# outra (medido em producao: 8 simultaneas custavam 4,3 vezes o tempo de uma). Declarando a
+# rota como def, o FastAPI roda ela numa threadpool e elas voltam a correr em paralelo.
+# As rotas que dao await em alguma coisa (IA, leitura de upload, outra corrotina) continuam
+# async, porque await so existe dentro de funcao async.
 class GenerateLookRequest(BaseModel):
    mode:    str            = "casual"
    weather: Optional[dict] = None
@@ -23,7 +30,7 @@ class CreateLookRequest(BaseModel):
    mode:        str = "casual"
 
 @router.get("/count")
-async def count_saved_looks(user=Depends(get_current_user)):
+def count_saved_looks(user=Depends(get_current_user)):
    result = (
       supabase.table("looks")
       .select("id", count="exact")
@@ -209,7 +216,7 @@ async def _get_rejection_context(user_id: str) -> list:
       return []
 
 @router.delete("/{look_id}")
-async def delete_look(look_id: str, user=Depends(get_current_user)):
+def delete_look(look_id: str, user=Depends(get_current_user)):
    result = (
       supabase.table("looks")
       .select("id")
@@ -253,7 +260,7 @@ async def save_look(look_id: str, user=Depends(get_current_user)):
    return {"saved": True}
 
 @router.post("/{look_id}/reject")
-async def reject_look(look_id: str, user=Depends(get_current_user)):
+def reject_look(look_id: str, user=Depends(get_current_user)):
    try:
       existing = (
          supabase.table("look_interactions")
@@ -303,7 +310,7 @@ async def _track_wear(clothes_ids: list, user_id: str):
       pass  # não bloqueia o salvamento do look se falhar
 
 @router.get("/")
-async def list_saved_looks(
+def list_saved_looks(
    user=Depends(get_current_user),
    limit: int = 20,
    offset: int = 0
@@ -333,7 +340,7 @@ async def list_saved_looks(
    return looks
 
 @router.post("/plan")
-async def plan_look(data: PlanRequest, user=Depends(get_current_user)):
+def plan_look(data: PlanRequest, user=Depends(get_current_user)):
    # confere que o look é do próprio usuário antes de agendar
    look = (
       supabase.table("looks")
@@ -351,7 +358,7 @@ async def plan_look(data: PlanRequest, user=Depends(get_current_user)):
    return result.data[0]
 
 @router.get("/planned")
-async def list_planned(user=Depends(get_current_user)):
+def list_planned(user=Depends(get_current_user)):
    planned = (
       supabase.table("planned_looks")
       .select("*")
@@ -384,6 +391,6 @@ async def list_planned(user=Depends(get_current_user)):
    return rows
 
 @router.delete("/planned/{plan_id}")
-async def delete_planned(plan_id: str, user=Depends(get_current_user)):
+def delete_planned(plan_id: str, user=Depends(get_current_user)):
    supabase.table("planned_looks").delete().eq("id", plan_id).eq("user_id", user.id).execute()
    return {"deleted": True}

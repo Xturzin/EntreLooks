@@ -7,8 +7,15 @@ from services.rate_limiter import rate_limiter
 
 router = APIRouter(prefix="/style", tags=["style"])
 
+# Rotas que so conversam com o Supabase sao "def" comum, e nao "async def", de proposito.
+# O cliente do supabase-py e sincrono: chamado de dentro de uma rota async, ele trava o
+# event loop inteiro enquanto espera a resposta, e as requisicoes passam a esperar uma pela
+# outra (medido em producao: 8 simultaneas custavam 4,3 vezes o tempo de uma). Declarando a
+# rota como def, o FastAPI roda ela numa threadpool e elas voltam a correr em paralelo.
+# As rotas que dao await em alguma coisa (IA, leitura de upload, outra corrotina) continuam
+# async, porque await so existe dentro de funcao async.
 @router.get("/")
-async def get_style_profile(user=Depends(get_current_user)):
+def get_style_profile(user=Depends(get_current_user)):
    # busca roupas
    clothes_result = supabase.table("clothes").select("*").eq("user_id", user.id).execute()
    clothes        = clothes_result.data

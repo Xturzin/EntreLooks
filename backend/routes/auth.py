@@ -5,6 +5,13 @@ from services.supabase_service import sign_up_user, sign_in_user, update_user_na
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Rotas que so conversam com o Supabase sao "def" comum, e nao "async def", de proposito.
+# O cliente do supabase-py e sincrono: chamado de dentro de uma rota async, ele trava o
+# event loop inteiro enquanto espera a resposta, e as requisicoes passam a esperar uma pela
+# outra (medido em producao: 8 simultaneas custavam 4,3 vezes o tempo de uma). Declarando a
+# rota como def, o FastAPI roda ela numa threadpool e elas voltam a correr em paralelo.
+# As rotas que dao await em alguma coisa (IA, leitura de upload, outra corrotina) continuam
+# async, porque await so existe dentro de funcao async.
 class AuthRequest(BaseModel):
    email: str
    password: str
@@ -65,7 +72,7 @@ async def refresh(data: RefreshRequest):
    return {"access_token": access_token, "refresh_token": refresh_token}
 
 @router.get("/me")
-async def get_me(user=Depends(get_current_user)):
+def get_me(user=Depends(get_current_user)):
    # o nome fica no user_metadata da conta (pode não existir ainda)
    meta = getattr(user, "user_metadata", None) or {}
    return {"name": meta.get("name")}
