@@ -13,14 +13,17 @@
 
    <!-- favicon -->
    <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg">
-   <link rel="shortcut icon" href="/assets/icons/favicon.svg">
+   <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
 
    <!-- Apple / iOS -->
    <meta name="mobile-web-app-capable" content="yes">
    <meta name="apple-mobile-web-app-capable" content="yes">
    <meta name="apple-mobile-web-app-status-bar-style" content="default">
    <meta name="apple-mobile-web-app-title" content="EntreLooks">
-   <link rel="apple-touch-icon" href="/assets/icons/favicon.svg">
+   <!-- O iOS ignora o manifest.json e nao aceita SVG aqui, entao o icone da tela de
+        inicio dele tem que ser este PNG. Se apontar pro SVG, o iPhone desiste e usa um
+        print da tela como icone. -->
+   <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png">
 
    <!-- Open Graph -->
    <meta property="og:type" content="website">
@@ -104,5 +107,51 @@
    <script src="js/pages/ai.js"></script>
    <script src="js/pages/style.js"></script>
    <script src="js/app.js"></script>
+
+   <!-- Registro do service worker. Fica inline aqui, e nao num arquivo dentro de js/,
+        porque ele nao pode depender de nada do app: se qualquer coisa nesse bloco
+        falhar, o site tem que continuar de pe exatamente como era antes de existir PWA. -->
+   <script>
+      if ('serviceWorker' in navigator) {
+         // Se ja existe um service worker no comando, esta pagina foi aberta por uma
+         // instalacao anterior. Ler isso ANTES de registrar e o que permite separar
+         // "trocou de versao" de "acabou de instalar pela primeira vez".
+         const jaTinhaControlador = !!navigator.serviceWorker.controller
+         let recarregando = false
+
+         // Quando a versao nova assume, a pagina em pe ainda e a antiga, entao um reload
+         // deixa a pessoa na versao certa sem ela precisar fazer nada. So que na
+         // primeirissima visita esse evento tambem dispara, e recarregar ali seria um
+         // susto sem motivo, porque o conteudo e exatamente o mesmo que ja esta na tela.
+         navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!jaTinhaControlador || recarregando) return
+            recarregando = true
+            window.location.reload()
+         })
+
+         // Espera o load pra nao disputar rede com o CSS e o JS da primeira pintura.
+         window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then((registro) => {
+               // App instalado fica dias aberto em segundo plano no celular, entao
+               // checar atualizacao so no carregamento da pagina pode nunca acontecer.
+               // Aqui a gente pergunta de novo quando ele volta pro primeiro plano, com
+               // uma folga de uma hora pra nao pedir a cada troca de aba.
+               const FOLGA_ENTRE_CHECAGENS = 60 * 60 * 1000
+               let ultimaChecagem = Date.now()
+
+               document.addEventListener('visibilitychange', () => {
+                  if (document.visibilityState !== 'visible') return
+                  if (Date.now() - ultimaChecagem < FOLGA_ENTRE_CHECAGENS) return
+                  ultimaChecagem = Date.now()
+                  registro.update().catch(() => {})
+               })
+            }).catch((erro) => {
+               // Sem service worker a pessoa perde o offline e a instalacao, mas o site
+               // segue funcionando igual. Por isso isto e um aviso, nao um erro.
+               console.warn('Service worker nao registrado:', erro)
+            })
+         })
+      }
+   </script>
 </body>
 </html>
