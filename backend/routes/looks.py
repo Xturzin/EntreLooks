@@ -1,4 +1,3 @@
-import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
@@ -59,11 +58,22 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
          detail="Adicione pelo menos 2 peças ao armário para gerar um look"
       )
 
-   # busca contexto de rejeições e de aceitações para aprendizado
-   rejected_context, positive_context = await asyncio.gather(
-      _get_rejection_context(user.id),
-      _get_positive_context(user.id)
-   )
+   # Indexa as peças por id uma vez só. Serve para os dois contextos logo abaixo e, no
+   # fim da rota, para devolver os dados completos das peças que a IA escolheu.
+   clothes_map = {c["id"]: c for c in clothes}
+
+   # Contexto de aprendizado. Os dois helpers recebem o índice pronto porque as peças dos
+   # looks passados são as mesmas peças do armário, e o select lá em cima já trouxe type,
+   # color e style de todas elas. Antes cada helper ia ao banco buscar de novo essas três
+   # colunas de peças que já estavam aqui na memória, o que custava duas consultas a mais
+   # justamente na rota mais lenta do app.
+   #
+   # Ficaram em sequência e não dentro de um asyncio.gather porque o gather não trazia
+   # paralelismo nenhum: nenhum dos dois dá await em nada, o cliente do Supabase é
+   # síncrono, então as corrotinas rodavam uma depois da outra do mesmo jeito. Sem o
+   # gather fica visível que a execução é sequencial de verdade.
+   rejected_context = _get_rejection_context(user.id, clothes_map)
+   positive_context = _get_positive_context(user.id, clothes_map)
 
    try:
       clothes_ids = await generate_look_ai(clothes, data.mode, data.weather, rejected_context, positive_context)
@@ -85,8 +95,7 @@ async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user
    look_data = result.data[0]
 
    # popula com os dados completos das peças
-   clothes_map              = {c["id"]: c for c in clothes}
-   look_data["clothes"]     = [clothes_map[id] for id in clothes_ids if id in clothes_map]
+   look_data["clothes"] = [clothes_map[id] for id in clothes_ids if id in clothes_map]
 
    return look_data
 
@@ -143,7 +152,7 @@ async def create_manual_look(data: CreateLookRequest, user=Depends(get_current_u
 #
 # Por isso o look_interactions guarda hoje apenas as rejeicoes, que nao tem equivalente em
 # nenhuma coluna de looks e por isso precisam mesmo de tabela propria.
-async def _get_positive_context(user_id: str) -> list:
+def _get_positive_context(user_id: str, clothes_map: dict) -> list:
    try:
       saved = (
          supabase.table("looks")
@@ -154,32 +163,12 @@ async def _get_positive_context(user_id: str) -> list:
          .limit(5)
          .execute()
       )
-
-      if not saved.data:
-         return []
-
-      all_cloth_ids = list({
-         cid
-         for look in saved.data
-         for cid in look.get("clothes_ids", [])
-      })
-
-      if not all_cloth_ids:
-         return []
-
-      positive_clothes = (
-         supabase.table("clothes")
-         .select("type, color, style")
-         .in_("id", all_cloth_ids[:20])
-         .execute()
-      )
-
-      return positive_clothes.data
-
    except Exception:
       return []
 
-async def _get_rejection_context(user_id: str) -> list:
+   return _pecas_dos_looks(saved.data, clothes_map)
+
+def _get_rejection_context(user_id: str, clothes_map: dict) -> list:
    try:
       rejections = (
          supabase.table("look_interactions")
@@ -202,27 +191,39 @@ async def _get_rejection_context(user_id: str) -> list:
          .in_("id", rejected_ids)
          .execute()
       )
-
-      all_cloth_ids = list({
-         cid
-         for look in rejected_looks.data
-         for cid in look.get("clothes_ids", [])
-      })
-
-      if not all_cloth_ids:
-         return []
-
-      rejected_clothes = (
-         supabase.table("clothes")
-         .select("type, color, style")
-         .in_("id", all_cloth_ids[:20])
-         .execute()
-      )
-
-      return rejected_clothes.data
-
    except Exception:
       return []
+
+   return _pecas_dos_looks(rejected_looks.data, clothes_map)
+
+# Junta as peças que aparecem nos looks recebidos e devolve as três colunas que o prompt
+# usa. Os ids passam por um set porque a mesma peça costuma repetir em vários looks, e o
+# corte em 20 é o mesmo de antes, quando essa lista virava um "in" no banco: ele segura o
+# tamanho do contexto que chega no prompt.
+#
+# Peça que não está no índice é ignorada, e isso acontece em dois casos. Um é peça apagada
+# do armário, cujo id continua no clothes_ids do look antigo, porque a coluna é um array de
+# uuid sem chave estrangeira. O outro é peça que ficou fora do limit(30) de quem tem
+# armário grande. Nos dois casos ela também não está entre as opções que a IA recebe, então
+# citá-la no contexto seria falar de roupa que não pode ser escolhida.
+def _pecas_dos_looks(looks: list, clothes_map: dict) -> list:
+   ids = list({
+      cid
+      for look in looks
+      for cid in look.get("clothes_ids", [])
+   })
+
+   pecas = []
+   for cid in ids[:20]:
+      peca = clothes_map.get(cid)
+      if peca:
+         pecas.append({
+            "type":  peca.get("type"),
+            "color": peca.get("color"),
+            "style": peca.get("style"),
+         })
+
+   return pecas
 
 @router.delete("/{look_id}")
 def delete_look(look_id: str, user=Depends(get_current_user)):
