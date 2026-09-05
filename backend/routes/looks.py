@@ -134,6 +134,15 @@ async def create_manual_look(data: CreateLookRequest, user=Depends(get_current_u
 
    return look_data
 
+# O contexto positivo vem de looks.saved, e nao do look_interactions, de proposito.
+#
+# Salvar um look e um evento so: o save_look marca looks.saved = True. Ler isso da tabela
+# de interacoes traria exatamente a mesma informacao custando uma consulta a mais (tres em
+# vez de duas), e numa rota que ja e a mais lenta do app. Como os dois helpers sao chamados
+# em sequencia, essa consulta extra seria uns 190ms cheios no caminho critico.
+#
+# Por isso o look_interactions guarda hoje apenas as rejeicoes, que nao tem equivalente em
+# nenhuma coluna de looks e por isso precisam mesmo de tabela propria.
 async def _get_positive_context(user_id: str) -> list:
    try:
       saved = (
@@ -248,15 +257,10 @@ async def save_look(look_id: str, user=Depends(get_current_user)):
    clothes_ids = result.data[0].get("clothes_ids", [])
    await _track_wear(clothes_ids, user.id)
 
-   try:
-      supabase.table("look_interactions").insert({
-         "user_id": user.id,
-         "look_id": look_id,
-         "action":  "accepted"
-      }).execute()
-   except Exception:
-      pass
-
+   # Aqui existia um insert de action="accepted" no look_interactions. Ele saiu porque
+   # gravava o mesmo evento duas vezes: salvar um look ja marca looks.saved = True logo
+   # acima, e era de la que o contexto positivo lia. Ninguem lia a linha "accepted", entao
+   # ela era escrita por escrever. Ver a explicacao no _get_positive_context.
    return {"saved": True}
 
 @router.post("/{look_id}/reject")
