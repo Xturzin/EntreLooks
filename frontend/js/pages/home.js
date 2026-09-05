@@ -58,9 +58,15 @@ const HomePage = {
       `
    },
 
+   // Quantas vezes seguidas a pessoa pode apertar "Não gostei" e ganhar um look novo
+   // automaticamente. Cada recusa gasta uma das 15 gerações por hora, e antes disso nada
+   // segurava: dava pra torrar a cota inteira em quinze cliques e só descobrir no 429.
+   LIMITE_RECUSAS_SEGUIDAS: 3,
+
    init() {
-      this.currentLook = null
-      this.weather     = null
+      this.currentLook     = null
+      this.weather         = null
+      this.recusasSeguidas = 0
       this.setupGreeting()
       this.loadStats()
       this.loadWeather()
@@ -149,7 +155,11 @@ const HomePage = {
       }
    },
 
-   async quickGenerate() {
+   async quickGenerate({ recomecar = true } = {}) {
+      // pedir um look pelo botão principal é um começo de conversa, então zera a contagem.
+      // Só a cadeia de recusas passa recomecar: false pra manter o contador subindo.
+      if (recomecar) this.recusasSeguidas = 0
+
       const btn = document.getElementById('quick-btn')
 
       btn.disabled = true
@@ -164,12 +174,20 @@ const HomePage = {
          if (!response) return
 
          if (!response.ok) {
-            const err       = await response.json().catch(() => ({}))
+            const err = await response.json().catch(() => ({}))
+
+            // 429 é cota nossa estourada (15 looks por hora). A mensagem genérica do backend
+            // não diz que o limite é por hora nem que os pedidos anteriores contaram, então
+            // aqui ela vira algo que explica o que aconteceu e o que fazer.
+            const recado = response.status === 429
+               ? 'Você já pediu vários looks nesta hora e o limite acabou. Daqui a pouco libera de novo.'
+               : (err.detail || 'Erro ao gerar look')
+
             const container = document.getElementById('home-look')
             if (container) {
                container.innerHTML = `
                   <p style="font-size: var(--text-sm); color: #C53030; text-align: center; padding: var(--space-md);">
-                     ${escapeHtml(err.detail || 'Erro ao gerar look')}
+                     ${escapeHtml(recado)}
                   </p>
                `
                container.classList.remove('hidden')
@@ -216,8 +234,36 @@ const HomePage = {
       btn.disabled    = true
       btn.textContent = 'Ok...'
 
+      // a recusa é registrada sempre: ela alimenta o contexto negativo da IA mesmo quando
+      // a gente para de gerar look novo em seguida
       await API.post(`/looks/${lookId}/reject`, {})
-      await this.quickGenerate()
+
+      this.recusasSeguidas++
+
+      if (this.recusasSeguidas >= this.LIMITE_RECUSAS_SEGUIDAS) {
+         // para a cadeia aqui. Continuar geraria uma chamada por clique até estourar a cota
+         // e cair num 429 seco, sem a pessoa entender que gastou as gerações da hora.
+         this.mostrarAvisoNoLook(
+            'Anotei que esses não serviram. Tente de novo daqui a pouco, ou peça um look ' +
+            'pelo botão acima escolhendo outro clima ou ocasião.'
+         )
+         return
+      }
+
+      // recomecar: false porque esta geração faz parte da mesma cadeia de recusas
+      await this.quickGenerate({ recomecar: false })
+   },
+
+   // recado dentro do card do look, no mesmo lugar onde o erro de geração já aparecia
+   mostrarAvisoNoLook(texto) {
+      const container = document.getElementById('home-look')
+      if (!container) return
+      container.innerHTML = `
+         <p style="font-size: var(--text-sm); color: var(--text-muted); text-align: center; padding: var(--space-md);">
+            ${escapeHtml(texto)}
+         </p>
+      `
+      container.classList.remove('hidden')
    },
 
    async saveLook(lookId) {
