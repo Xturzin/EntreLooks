@@ -103,17 +103,29 @@ async function showApp() {
    if (!localStorage.getItem('el_onboarded')) {
       const response = await API.get('/clothes/')
 
-      // null = token expirado, API.request já redirecionou para login
-      if (!response) return
+      // O null chega aqui por dois motivos bem diferentes. Um deles é a sessão ter
+      // acabado de vez: nesse caso o API.request já limpou os tokens e chamou a tela de
+      // login, então não sobra nada pra fazer aqui. O outro é a rede ter caído, e aí a
+      // pessoa continua logada. Sair aqui nesse segundo caso deixaria o #app visível com
+      // o conteúdo vazio, ou seja, tela branca, e isso passou a acontecer de verdade
+      // depois do service worker, que faz o app abrir mesmo sem internet.
+      // Quem separa os dois é a sessão ainda estar de pé, porque só o caminho de
+      // sessão expirada apaga ela.
+      if (!response && !Auth.isAuthenticated()) return
 
-      const clothes = response.ok ? await response.json() : []
+      // Sem resposta e ainda logado é rede fora. Não dá pra saber se o armário está
+      // vazio, então pula o onboarding e segue pra home: mostrar as boas-vindas pra quem
+      // já tem roupas cadastradas seria pior que mostrar a home sem os números.
+      if (response) {
+         const clothes = response.ok ? await response.json() : []
 
-      if (clothes.length === 0) {
-         showOnboarding()
-         return
+         if (clothes.length === 0) {
+            showOnboarding()
+            return
+         }
+
+         localStorage.setItem('el_onboarded', 'true')
       }
-
-      localStorage.setItem('el_onboarded', 'true')
    }
 
    const targetPage = routes[hashPage] ? hashPage : 'home'
