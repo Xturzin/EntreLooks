@@ -35,7 +35,9 @@ async def upload_clothing(
    bg_removed: bool = Form(False),
    user=Depends(get_current_user)
 ):
-   rate_limiter.check("imagem", user.id, limit=20, window=3600)  # 20 imagens/hora
+   # 30 e não 20 porque montar o armário é uma sessão só: com 20 a pessoa era obrigada a
+   # parar no meio do cadastro e voltar uma hora depois.
+   rate_limiter.check("imagem", user.id, limit=30, window=3600)  # 30 imagens/hora
 
    if file.content_type not in ("image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"):
       raise HTTPException(status_code=400, detail="Formato inválido. Use JPG, PNG ou WEBP.")
@@ -190,8 +192,9 @@ async def replace_photo(
 ):
    """Troca só a foto de uma peça já cadastrada, mantendo o resto (id, categoria,
    presença nos looks). Serve pra consertar um recorte ruim ou modernizar peça antiga."""
-   # mesmo balde do upload: subir peça nova e trocar foto custam o mesmo trabalho
-   rate_limiter.check("imagem", user.id, limit=20, window=3600)
+   # mesmo balde do upload, e por isso o mesmo teto: subir peça nova e trocar foto custam
+   # o mesmo trabalho, e um número menor aqui viraria o limite real do balde inteiro
+   rate_limiter.check("imagem", user.id, limit=30, window=3600)
 
    existing = (
       supabase.table("clothes")
