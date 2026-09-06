@@ -35,6 +35,11 @@ function zoneOf(type) {
 }
 
 const LooksPage = {
+   // Ids que a Mira sugeriu no chat, esperando a aba Montar carregar. Repare que ela NÃO
+   // é zerada no init(): quem escreve aqui é o chat, logo antes de chamar navigate('looks'),
+   // e o init roda depois disso. Zerar ali apagaria a sugestão no caminho.
+   sugestaoPendente: null,
+
    currentLook:  null,
    activeMode:   'casual',
    _savedLooks:  [],
@@ -217,8 +222,39 @@ const LooksPage = {
          return
       }
 
+      // Veio de uma sugestão da Mira? Então monta ela. Sem sugestão pendente, segue o
+      // comportamento de sempre, que é abrir com um look sorteado.
+      if (this.sugestaoPendente) {
+         this.aplicarSugestao(this.sugestaoPendente)
+         this.sugestaoPendente = null
+         return
+      }
+
       // já abre com um look montado, pra pessoa ver a colagem pronta
       this.shuffleLook()
+   },
+
+   // Coloca as peças sugeridas nos espaços da colagem. O backend já manda no máximo uma
+   // peça por espaço, mas a checagem de espaço livre fica aqui do mesmo jeito, porque a
+   // sugestão pode ter vindo de uma conversa antiga e o armário pode ter mudado desde lá.
+   aplicarSugestao(ids) {
+      const byId  = Object.fromEntries(this._buildClothes.map(c => [c.id, c]))
+      this._slots = {}
+
+      ids.forEach(id => {
+         // peça apagada do armário depois que a Mira sugeriu: simplesmente não entra
+         if (!byId[id]) return
+
+         const slot = LOOK_SLOTS.find(s =>
+            !this._slots[s.key] && this.piecesForSlot(s).some(c => c.id === id)
+         )
+         if (slot) this._slots[slot.key] = id
+      })
+
+      // vestido ou macacão no centro dispensa a parte de baixo, igual ao sorteio
+      if (this.topIsFull()) this._slots.bottom = null
+
+      this.renderCanvas()
    },
 
    // peças do armário que cabem numa zona (parte de cima, calçado, etc.)

@@ -124,3 +124,60 @@
       transform: translateX(calc(-50% + var(--rail-width) / 2));
    }
 }
+
+/* Sugestão de look que a Mira faz no chat. Fica logo abaixo da bolha, como um bloco
+   próprio, e não dentro dela: a bolha tem padding e cantos de balão de conversa, que
+   apertariam as miniaturas. */
+.chat-look {
+   align-self: flex-start;
+   max-width: 80%;
+   background: var(--surface);
+   border-radius: 22px;
+   border-top-left-radius: 8px;
+   padding: var(--space-sm);
+   box-shadow: var(--shadow-sm);
+   animation: bubbleIn 0.35s var(--ease-spring) both;
+}
+
+/* Tira que rola na horizontal em vez de quebrar linha. Um look pode chegar com até seis
+   peças (uma de cima, uma de baixo, calçado, bolsa e três acessórios), e empilhar isso
+   numa bolha de chat esticaria a conversa toda. */
+.chat-look-clothes {
+   display: flex;
+   gap: var(--space-xs);
+   overflow-x: auto;
+   padding-bottom: 2px;
+}
+
+.chat-look-item {
+   flex: 0 0 64px;
+   background: var(--bg);
+   border-radius: var(--radius-sm);
+   overflow: hidden;
+}
+
+.chat-look-item img {
+   width: 100%;
+   aspect-ratio: 3 / 4;
+   object-fit: contain;
+   display: block;
+}
+
+.chat-look-btn {
+   width: 100%;
+   margin-top: var(--space-sm);
+   padding: 10px;
+   border: none;
+   border-radius: var(--radius-full);
+   background: var(--primary);
+   color: #fff;
+   font-family: var(--font);
+   font-size: var(--text-sm);
+   font-weight: 600;
+   cursor: pointer;
+   transition: background var(--duration-fast) var(--ease);
+}
+
+.chat-look-btn:active {
+   background: var(--primary-dark);
+}

@@ -8,6 +8,7 @@ from typing import List, Optional
 from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.openai_service import chat_with_stylist
+from services.look_service import encontrar_look_citado, separar_linha_look
 from services.rate_limiter import rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -115,15 +116,52 @@ async def _get_key_pieces(user_id: str) -> dict:
    except Exception:
       return {}
 
+def _sugestao_de_look(reply: str, clothes: list) -> tuple:
+   """Devolve (resposta_pra_mostrar, extras) onde extras traz o campo "sugestao" quando a
+   Mira sugeriu um look montável, ou vem vazio quando não sugeriu.
+
+   O try é estreito de propósito: ele cobre só o casamento, e não a conversa. A resposta da
+   Mira já está pronta e é o que a pessoa veio buscar, então um erro aqui pode custar a
+   miniatura, nunca a mensagem.
+   """
+   try:
+      linha, sem_linha = separar_linha_look(reply)
+      pecas = encontrar_look_citado(linha, clothes) if linha else []
+   except Exception as e:
+      logger.warning(f"Falha ao casar peças da sugestão: {type(e).__name__}: {e}")
+      return reply, {}
+
+   if not pecas:
+      # Sem peças casadas a linha continua no texto: ela é legível e vale mais como
+      # resumo do que sumindo sem deixar nada no lugar.
+      return reply, {}
+
+   # Casou, então as miniaturas substituem a lista escrita e ela sai do texto.
+   return sem_linha, {
+      "sugestao": {
+         "clothes_ids": [p["id"] for p in pecas],
+         # só o que a bolha precisa desenhar, em vez da linha inteira do banco
+         "clothes": [
+            {
+               "id":        p["id"],
+               "type":      p.get("type"),
+               "color":     p.get("color"),
+               "image_url": p.get("image_url"),
+            }
+            for p in pecas
+         ],
+      }
+   }
+
 @router.post("/chat")
 async def chat(data: ChatRequest, user=Depends(get_current_user)):
-   rate_limiter.check(user.id, limit=40, window=3600)  # 40 mensagens/hora
+   rate_limiter.check("chat", user.id, limit=40, window=3600)  # 40 mensagens/hora
 
    # busca roupas para contexto - continua sem elas se falhar
    try:
       clothes_result = (
          supabase.table("clothes")
-         .select("type, color, style, occasion")
+         .select("id, type, color, style, occasion, image_url, wear_count")
          .eq("user_id", user.id)
          .execute()
       )
@@ -148,7 +186,8 @@ async def chat(data: ChatRequest, user=Depends(get_current_user)):
       reply = await chat_with_stylist(
          data.message, history, clothes, name, data.weather, planned, key_pieces
       )
-      return {"reply": reply}
+      texto, extras = _sugestao_de_look(reply, clothes)
+      return {"reply": texto, **extras}
    except Exception as e:
       logger.error(f"Erro no chat_with_stylist: {type(e).__name__}: {e}")
       raise HTTPException(

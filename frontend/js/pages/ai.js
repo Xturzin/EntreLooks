@@ -56,6 +56,10 @@ const AIPage = {
          div.className   = `chat-bubble ${msg.role === 'user' ? 'user' : 'ai'}`
          div.textContent = msg.content
          messages.appendChild(div)
+
+         // Trocar de aba destrói o DOM do chat e ele é remontado a partir daqui, então a
+         // sugestão precisa ser redesenhada junto, senão ela some ao ir no Armário e voltar.
+         if (msg.sugestao) this.renderSugestao(div, msg.sugestao)
       })
       messages.scrollTop = messages.scrollHeight
    },
@@ -85,14 +89,32 @@ const AIPage = {
       try {
          const response = await API.post(
             '/ai/chat',
-            { message, history: this.history.slice(-10), weather: getWeather() },
+            {
+               message,
+               // O history daqui guarda a sugestão pendurada em cada mensagem, pra ela
+               // sobreviver à troca de aba. O backend só conhece role e content, então
+               // o que vai pra IA é uma cópia enxuta.
+               history: this.history.slice(-10).map(m => ({ role: m.role, content: m.content })),
+               weather: getWeather()
+            },
             controller.signal
          )
 
          if (response?.ok) {
-            const data = await response.json()
-            this.addBubble('ai', data.reply)
-            this.history.push({ role: 'assistant', content: data.reply })
+            const data    = await response.json()
+            const bolhaId = this.addBubble('ai', data.reply)
+
+            // O campo sugestao só vem quando a resposta descreve um look montável com
+            // peças que a pessoa tem. Quando não vem, a bolha fica como sempre foi.
+            if (data.sugestao) {
+               this.renderSugestao(document.getElementById(bolhaId), data.sugestao)
+            }
+
+            this.history.push({
+               role:     'assistant',
+               content:  data.reply,
+               sugestao: data.sugestao || null
+            })
          } else if (response) {
             this.history.pop()
             const err    = await response.json().catch(() => ({}))
@@ -112,6 +134,40 @@ const AIPage = {
          sendBtn.disabled = false
          input.focus()
       }
+   },
+
+   // Tira de miniaturas embaixo da bolha, com o botão que leva o look pra aba Montar.
+   // O formato é o mesmo do card de look da Home, e não a colagem de sete espaços da aba
+   // Looks: numa bolha de chat, que tem uns 280px, os espaços de acessório da colagem
+   // ficariam pequenos demais pra distinguir um colar de um óculos.
+   renderSugestao(bolha, sugestao) {
+      if (!bolha || !sugestao?.clothes?.length) return
+
+      const bloco     = document.createElement('div')
+      bloco.className = 'chat-look'
+      bloco.innerHTML = `
+         <div class="chat-look-clothes">
+            ${sugestao.clothes.map(c => `
+               <div class="chat-look-item">
+                  <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+               </div>
+            `).join('')}
+         </div>
+         <button class="chat-look-btn">Montar esse look</button>
+      `
+
+      bolha.insertAdjacentElement('afterend', bloco)
+
+      bloco.querySelector('.chat-look-btn').addEventListener('click', () => {
+         // A aba Montar lê isso quando terminar de carregar as peças. Passar só os ids
+         // basta: a sugestão é ponto de partida, não look salvo, então não precisa de
+         // linha no banco.
+         LooksPage.sugestaoPendente = sugestao.clothes_ids
+         navigate('looks')
+      })
+
+      const messages = document.getElementById('chat-messages')
+      if (messages) messages.scrollTop = messages.scrollHeight
    },
 
    addBubble(role, content, isLoading = false) {
