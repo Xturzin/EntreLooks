@@ -29,3 +29,9 @@ briefing-design.md
 
 # Redesign
 design/
+
+# Midias de divulgacao (screenshots e gifs pro README e portfolio).
+# Sao geradas pelo gerar-midias.py a partir da conta demo, entao podem ser refeitas
+# a qualquer momento e nao fazem sentido versionadas: sao pesadas e mudam a cada rodada.
+midias/
+gerar-midias.py
