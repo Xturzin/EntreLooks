@@ -41,7 +41,7 @@ def count_saved_looks(user=Depends(get_current_user)):
 
 @router.post("/generate")
 async def generate_look(data: GenerateLookRequest, user=Depends(get_current_user)):
-   rate_limiter.check(user.id, limit=15, window=3600)  # 15 looks/hora
+   rate_limiter.check("look", user.id, limit=15, window=3600)  # 15 looks/hora
 
    clothes_result = (
       supabase.table("clothes")

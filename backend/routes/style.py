@@ -40,7 +40,7 @@ def get_style_profile(user=Depends(get_current_user)):
 
 @router.post("/generate")
 async def generate_profile(user=Depends(get_current_user)):
-   rate_limiter.check(user.id, limit=5, window=3600)  # 5 análises/hora
+   rate_limiter.check("estilo", user.id, limit=5, window=3600)  # 5 análises/hora
 
    clothes_result = supabase.table("clothes").select("*").eq("user_id", user.id).execute()
    clothes        = clothes_result.data
