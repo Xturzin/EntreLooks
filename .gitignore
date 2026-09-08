@@ -35,3 +35,10 @@ design/
 # a qualquer momento e nao fazem sentido versionadas: sao pesadas e mudam a cada rodada.
 midias/
 gerar-midias.py
+
+# Semeadura da conta de demonstracao: os scripts e a pasta de fotos de entrada.
+# Ficam de fora porque sao ferramenta de uso unico, e as fotos sao pesadas e nao fazem
+# parte do produto.
+fotos-demo/
+subir-fotos.py
+semear-demo.py
