@@ -26,22 +26,62 @@
 /* colagem do look (montar): quadro estilo lookbook.
    As posições vêm do grid-template-areas: parte de cima e de baixo no centro,
    calçado embaixo à esquerda, bolsa à direita e acessórios nas laterais. */
+/* A colagem é uma pilha: as peças de corpo em cima, ocupando a maior parte do quadro, e o
+   resto (calçado, bolsa, acessórios) numa fileira embaixo. Antes era um grid de áreas
+   nomeadas com sete espaços fixos, e o preço disso era que espaço sem peça virava buraco
+   ou contorno tracejado. Como agora só entra o que foi escolhido, o layout precisa se
+   ajustar à quantidade, e uma pilha faz isso sozinha. */
 .look-canvas {
    background: var(--surface);
    border-radius: var(--radius-lg);
    padding: var(--space-md);
-   display: grid;
-   grid-template-columns: 64px 1fr 64px;
-   grid-template-rows: repeat(4, 1fr);
-   grid-template-areas:
-      "acc1  top     bag "
-      "acc2  top     bag "
-      "shoes bottom  acc3"
-      "shoes bottom  acc3";
+   display: flex;
+   flex-direction: column;
    gap: var(--space-sm);
    aspect-ratio: 3 / 4;
    margin-bottom: var(--space-md);
    box-shadow: var(--shadow-md);
+}
+
+/* grid-auto-rows: 1fr faz uma peça sozinha ocupar tudo e duas dividirem meio a meio, sem
+   precisar contar quantas são no JavaScript */
+.colagem-principal {
+   flex: 1 1 auto;
+   min-height: 0;
+   display: grid;
+   grid-auto-rows: 1fr;
+   gap: var(--space-sm);
+}
+
+.colagem-extras {
+   flex: 0 0 26%;
+   min-height: 0;
+   display: flex;
+   justify-content: center;
+   gap: var(--space-sm);
+}
+
+/* o max-width impede que um calçado sozinho vire uma faixa da largura toda, e com cinco
+   extras o flex encolhe todos por igual */
+.colagem-extras .look-slot {
+   flex: 1 1 0;
+   max-width: 30%;
+}
+
+/* look só de acessório: sem bloco principal, a fileira toma o quadro */
+.look-canvas > .colagem-extras:only-child {
+   flex: 1 1 auto;
+}
+
+.look-canvas.look-canvas-vazia {
+   align-items: center;
+   justify-content: center;
+}
+
+.look-canvas-aviso {
+   font-size: var(--text-sm);
+   color: var(--text-muted);
+   text-align: center;
 }
 
 /* quando o armário está vazio o quadro vira só uma caixa de aviso */
@@ -52,15 +92,12 @@
    aspect-ratio: auto;
 }
 
-.area-top    { grid-area: top; }
-.area-bottom { grid-area: bottom; }
-.area-shoes  { grid-area: shoes; }
-.area-bag    { grid-area: bag; }
-.area-acc1   { grid-area: acc1; }
-.area-acc2   { grid-area: acc2; }
-.area-acc3   { grid-area: acc3; }
-
 .look-slot {
+   /* sem isso o toque longo abre o menu do sistema (Android) ou a oferta de salvar a
+      imagem (iOS) por cima do gesto de tirar a peça */
+   -webkit-touch-callout: none;
+   user-select: none;
+   -webkit-user-select: none;
    border: none;
    background: var(--bg);
    padding: 0;
@@ -86,22 +123,9 @@
    transform: scale(0.95);
 }
 
-/* peça de corpo inteiro (vestido, macacão) ocupa o centro todo, cima e baixo */
-.look-slot.is-full {
-   grid-row: 1 / 5;
-}
-
-.look-slot.empty {
-   border: 1.5px dashed #D5DECC;
-   background: transparent;
-}
-
-.look-slot-hint {
-   font-size: 9.5px;
-   font-weight: 600;
-   color: var(--text-muted);
-   text-align: center;
-   padding: 2px;
+.build-add {
+   width: 100%;
+   margin-bottom: var(--space-sm);
 }
 
 .build-actions {
@@ -213,9 +237,24 @@
    box-shadow: 0 0 0 3px var(--primary) inset;
 }
 
-.picker-clear {
+/* Tirar a peça do look. Antes era um quadradinho igual aos outros do grid, escrito
+   "tirar" em letra pequena, que se perdia no meio das fotos. Agora é uma faixa de largura
+   inteira acima delas, porque é a única ação da folha que não é "escolher uma peça". */
+.picker-remove {
+   grid-column: 1 / -1;
+   border: none;
+   border-radius: var(--radius-full);
    background: var(--tint-pink);
-   border: 1.5px dashed #E5B9C7;
+   color: var(--accent-deep);
+   font-family: var(--font);
+   font-size: var(--text-sm);
+   font-weight: 700;
+   padding: 12px;
+   cursor: pointer;
+}
+
+.picker-remove:active {
+   background: #F6DDE5;
 }
 
 .picker-empty {
@@ -400,6 +439,19 @@
    object-fit: cover;
    background: var(--bg);
    border-radius: 12px;
+}
+
+/* cinco ou seis peças passam a três colunas, pra continuarem duas fileiras e o card não
+   ficar mais alto que os vizinhos na grade */
+.saved-look-clothes[data-muitas="true"] {
+   grid-template-columns: repeat(3, 1fr);
+}
+
+.look-sumidas {
+   display: block;
+   margin-top: 4px;
+   font-size: var(--text-xs);
+   color: var(--text-muted);
 }
 
 .saved-look-card .look-mode {
