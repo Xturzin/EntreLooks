@@ -1,14 +1,16 @@
-// Posições fixas da colagem do look. A ordem aqui é a ordem que as peças
-// entram no look salvo. O "area" casa com o grid-template-areas do CSS,
-// e o "zone" diz que tipo de peça cabe em cada espaço.
+// Espaços que o look pode ter. A ordem aqui é a ordem que as peças entram no look salvo,
+// e o "zone" diz que tipo de peça cabe em cada um. Acessório tem três lugares.
+//
+// Não existe mais um campo de posição no quadro: a colagem monta o arranjo a partir do que
+// foi escolhido, em vez de encaixar cada peça num lugar fixo do grid.
 const LOOK_SLOTS = [
-   { key: 'top',    zone: 'top',       area: 'top',    hint: 'parte de cima' },
-   { key: 'bottom', zone: 'bottom',    area: 'bottom', hint: 'parte de baixo' },
-   { key: 'shoes',  zone: 'shoes',     area: 'shoes',  hint: 'calçado' },
-   { key: 'bag',    zone: 'bag',       area: 'bag',    hint: 'bolsa' },
-   { key: 'acc1',   zone: 'accessory', area: 'acc1',   hint: 'acessório' },
-   { key: 'acc2',   zone: 'accessory', area: 'acc2',   hint: 'acessório' },
-   { key: 'acc3',   zone: 'accessory', area: 'acc3',   hint: 'acessório' },
+   { key: 'top',    zone: 'top',       hint: 'parte de cima' },
+   { key: 'bottom', zone: 'bottom',    hint: 'parte de baixo' },
+   { key: 'shoes',  zone: 'shoes',     hint: 'calçado' },
+   { key: 'bag',    zone: 'bag',       hint: 'bolsa' },
+   { key: 'acc1',   zone: 'accessory', hint: 'acessório' },
+   { key: 'acc2',   zone: 'accessory', hint: 'acessório' },
+   { key: 'acc3',   zone: 'accessory', hint: 'acessório' },
 ]
 
 // A IA guarda o tipo da peça como texto livre (camiseta, saia, tênis...).
@@ -32,6 +34,38 @@ function zoneOf(type) {
    }
    // sem correspondência, trata como parte de cima
    return 'top'
+}
+
+// Decide o que vai grande no meio do look e o que vai na fileira de baixo.
+//
+// Mora aqui, fora do desenho, porque dois lugares precisam da MESMA decisão e desenham de
+// jeitos diferentes: a colagem da aba Montar monta elementos no DOM, e o compartilhar
+// pinta num canvas com coordenadas em pixel. O que dá pra compartilhar entre os dois é a
+// escolha, não o traço.
+//
+// Recebe itens no formato { cloth, slot }, e devolve os mesmos itens separados. O slot vem
+// junto porque a colagem precisa saber em que espaço a peça está pra abrir a folha certa
+// quando alguém tocar nela; o compartilhar simplesmente ignora esse campo.
+//
+// O maxAcessorios existe porque os dois cabem em quantidades diferentes: a colagem tem três
+// lugares de acessório, e a imagem compartilhada só comporta dois sem a fileira estourar a
+// largura de 1080px.
+function arranjoDoLook(itens, maxAcessorios = 3) {
+   const porZona = { full: [], top: [], bottom: [], shoes: [], bag: [], accessory: [] }
+   itens.forEach(item => (porZona[zoneOf(item.cloth.type)] || porZona.accessory).push(item))
+
+   // vestido e macacão ocupam o centro sozinhos e dispensam a parte de baixo
+   const principal = porZona.full.length
+      ? porZona.full.slice(0, 1)
+      : [...porZona.top.slice(0, 1), ...porZona.bottom.slice(0, 1)]
+
+   const extras = [
+      ...porZona.shoes.slice(0, 1),
+      ...porZona.bag.slice(0, 1),
+      ...porZona.accessory.slice(0, maxAcessorios),
+   ]
+
+   return { principal, extras }
 }
 
 const LooksPage = {
@@ -78,6 +112,8 @@ const LooksPage = {
                </div>
 
                <div class="look-canvas" id="look-canvas"></div>
+
+               <button class="btn-secondary build-add" id="build-add">Adicionar peça</button>
 
                <div class="build-actions" id="build-actions">
                   <button class="btn-secondary" id="build-shuffle">Embaralhar look</button>
@@ -143,6 +179,7 @@ const LooksPage = {
       this._buildClothes = []
       this._slots        = {}
       this._pickerSlot   = null
+      this._ignorarProximoClique = false
       this._planned      = []
       this._detailLookId = null
       this._detailLook   = null
@@ -158,6 +195,7 @@ const LooksPage = {
 
       document.getElementById('generate-btn').addEventListener('click', () => this.generate())
       document.getElementById('build-shuffle').addEventListener('click', () => this.shuffleLook())
+      document.getElementById('build-add').addEventListener('click', () => this.abrirEscolha({}))
       document.getElementById('build-save').addEventListener('click', () => this.saveManualLook())
 
       // fechar a folha de seleção tocando fora ou no X
@@ -257,6 +295,91 @@ const LooksPage = {
       this.renderCanvas()
    },
 
+   // Tira a peça do look. Os dois caminhos (toque longo e o botão da folha) chegam aqui.
+   removerDoLook(slotKey) {
+      if (!this._slots[slotKey]) return
+      this._slots[slotKey] = null
+      this.renderCanvas()
+      showToast('Peça tirada do look')
+   },
+
+   // Toque longo no celular, botão direito no computador.
+   //
+   // Três detalhes que decidem se isso funciona ou irrita:
+   //
+   //  - Movimento de mais de 8px cancela. Sem isso, rolar a página com o dedo em cima de
+   //    uma peça tiraria ela do look sem querer.
+   //  - O clique que o navegador dispara depois do toque longo precisa ser engolido, senão
+   //    a folha de escolha abriria logo em cima da remoção. A trava fica na página e não no
+   //    elemento, porque o renderCanvas troca o DOM inteiro no meio do caminho e o elemento
+   //    que recebeu o toque já não existe quando o clique chega.
+   //  - O menu do sistema tem que ser bloqueado: no Android o toque longo abre o menu de
+   //    contexto e no iOS oferece salvar a imagem, os dois por cima do gesto.
+   ligarRemocao(el) {
+      const LIMITE_MS = 500
+      const TOLERANCIA_PX = 8
+      let timer  = null
+      let inicio = null
+
+      const cancelar = () => { clearTimeout(timer); timer = null }
+
+      el.addEventListener('pointerdown', (e) => {
+         if (e.button === 2) return   // botão direito tem caminho próprio, no contextmenu
+         inicio = { x: e.clientX, y: e.clientY }
+         timer  = setTimeout(() => {
+            timer = null
+            this._ignorarProximoClique = true
+            setTimeout(() => { this._ignorarProximoClique = false }, 400)
+            this.removerDoLook(el.dataset.slot)
+         }, LIMITE_MS)
+      })
+
+      el.addEventListener('pointermove', (e) => {
+         if (!timer || !inicio) return
+         if (Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > TOLERANCIA_PX) cancelar()
+      })
+
+      ;['pointerup', 'pointercancel', 'pointerleave'].forEach(evento =>
+         el.addEventListener(evento, cancelar))
+
+      el.addEventListener('contextmenu', (e) => {
+         e.preventDefault()
+         this.removerDoLook(el.dataset.slot)
+      })
+   },
+
+   // Decide sozinho em que espaço a peça entra, a partir do tipo. Usado quando a escolha
+   // veio do botão de adicionar, em que a pessoa não apontou um lugar.
+   //
+   // Zona de um espaço só (cima, baixo, calçado, bolsa) substitui o que estiver lá.
+   // Acessório vai pro primeiro dos três livres e, com os três ocupados, troca o primeiro:
+   // é o comportamento menos surpreendente, porque a pessoa vê a troca acontecer na hora.
+   encaixar(id) {
+      const cloth = this._buildClothes.find(c => c.id === id)
+      if (!cloth) return
+
+      // a mesma peça não pode ficar em dois lugares do mesmo look
+      LOOK_SLOTS.forEach(s => { if (this._slots[s.key] === id) this._slots[s.key] = null })
+
+      const zona = zoneOf(cloth.type)
+
+      if (zona === 'accessory') {
+         const chaves = LOOK_SLOTS.filter(s => s.zone === 'accessory').map(s => s.key)
+         this._slots[chaves.find(k => !this._slots[k]) || chaves[0]] = id
+         return
+      }
+
+      if (zona === 'full') {
+         // vestido e macacão ocupam o centro e dispensam a parte de baixo
+         this._slots.top    = id
+         this._slots.bottom = null
+         return
+      }
+
+      const alvo = LOOK_SLOTS.find(s => s.zone === zona)
+      if (alvo) this._slots[alvo.key] = id
+   },
+
    // peças do armário que cabem numa zona (parte de cima, calçado, etc.)
    piecesInZone(zone) {
       return this._buildClothes.filter(c => zoneOf(c.type) === zone)
@@ -277,25 +400,33 @@ const LooksPage = {
    },
 
    // sorteia uma peça pra cada espaço, sem repetir a mesma peça em dois lugares
+   // Sorteia um look plausível, não um look cheio.
+   //
+   // Antes enchia os sete espaços, o que fazia sentido quando os vazios apareciam como
+   // contorno tracejado: o quadro já estava desenhado de qualquer jeito. Agora que a
+   // colagem mostra só o que foi escolhido, abrir a aba com sete peças e ter que tirar
+   // cinco é o oposto de começar um look. Então sai o núcleo, que é o que veste uma
+   // pessoa, mais um extra pro sorteio não sair sempre igual.
    shuffleLook() {
-      const used = new Set()
+      const usadas = new Set()
+      this._slots  = {}
 
-      LOOK_SLOTS.forEach(slot => {
-         // com vestido/macacão na parte de cima, a parte de baixo fica de fora
-         if (slot.key === 'bottom' && this.topIsFull()) {
-            this._slots.bottom = null
-            return
-         }
+      const espaco  = (chave) => LOOK_SLOTS.find(s => s.key === chave)
+      const sortear = (slot) => {
+         const opcoes = this.piecesForSlot(slot).filter(c => !usadas.has(c.id))
+         if (opcoes.length === 0) return
+         const escolha = opcoes[Math.floor(Math.random() * opcoes.length)]
+         this._slots[slot.key] = escolha.id
+         usadas.add(escolha.id)
+      }
 
-         const options = this.piecesForSlot(slot).filter(c => !used.has(c.id))
-         if (options.length === 0) {
-            this._slots[slot.key] = null
-            return
-         }
-         const pick = options[Math.floor(Math.random() * options.length)]
-         this._slots[slot.key] = pick.id
-         used.add(pick.id)
-      })
+      sortear(espaco('top'))
+      // com vestido ou macacão em cima, a parte de baixo fica de fora
+      if (!this.topIsFull()) sortear(espaco('bottom'))
+      sortear(espaco('shoes'))
+
+      const extras = ['bag', 'acc1'].filter(k => this.piecesForSlot(espaco(k)).length > 0)
+      if (extras.length) sortear(espaco(extras[Math.floor(Math.random() * extras.length)]))
 
       this.renderCanvas()
    },
@@ -304,54 +435,70 @@ const LooksPage = {
       const canvas = document.getElementById('look-canvas')
       canvas.classList.remove('look-canvas-empty')
 
-      const byId    = Object.fromEntries(this._buildClothes.map(c => [c.id, c]))
-      const fullTop = this.topIsFull()
+      // Só as peças escolhidas. Espaço vazio não é desenhado: quem diz onde dá pra pôr
+      // coisa agora é o botão de adicionar, embaixo da colagem.
+      const byId  = Object.fromEntries(this._buildClothes.map(c => [c.id, c]))
+      const itens = LOOK_SLOTS
+         .map(slot => ({ slot, cloth: byId[this._slots[slot.key]] }))
+         .filter(item => item.cloth)
 
-      canvas.innerHTML = LOOK_SLOTS.map(slot => {
-         // com vestido no centro, o espaço da parte de baixo nem é desenhado
-         if (slot.key === 'bottom' && fullTop) return ''
+      if (itens.length === 0) {
+         canvas.classList.add('look-canvas-vazia')
+         canvas.innerHTML = `<p class="look-canvas-aviso">Toque em Adicionar peça para começar</p>`
+         return
+      }
 
-         const cloth   = this._slots[slot.key] ? byId[this._slots[slot.key]] : null
-         // a peça de corpo inteiro estica o espaço de cima pra ocupar o centro todo
-         const fullMod = (slot.key === 'top' && fullTop) ? ' is-full' : ''
+      canvas.classList.remove('look-canvas-vazia')
 
-         if (cloth) {
-            return `
-               <button class="look-slot filled area-${slot.area}${fullMod}" data-slot="${slot.key}">
-                  <img src="${escapeHtml(cloth.image_url)}" alt="">
-               </button>
-            `
-         }
+      const { principal, extras } = arranjoDoLook(itens)
 
-         return `
-            <button class="look-slot empty area-${slot.area}${fullMod}" data-slot="${slot.key}">
-               <span class="look-slot-hint">${slot.hint}</span>
-            </button>
-         `
-      }).join('')
+      const desenhar = (item) => `
+         <button class="look-slot filled" data-slot="${item.slot.key}">
+            <img src="${escapeHtml(item.cloth.image_url)}" alt="${escapeHtml(item.cloth.type || '')}">
+         </button>
+      `
+
+      // O bloco principal só existe se houver peça de corpo, senão a fileira de baixo
+      // ocupa o quadro inteiro em vez de sobrar um espaço morto em cima.
+      canvas.innerHTML =
+         (principal.length ? `<div class="colagem-principal">${principal.map(desenhar).join('')}</div>` : '') +
+         (extras.length    ? `<div class="colagem-extras">${extras.map(desenhar).join('')}</div>` : '')
 
       canvas.querySelectorAll('.look-slot').forEach(el => {
-         el.addEventListener('click', () => this.openPicker(el.dataset.slot))
+         this.ligarRemocao(el)
+         el.addEventListener('click', () => {
+            // o clique que vem logo depois de um toque longo é o da própria remoção
+            if (this._ignorarProximoClique) return
+            this.abrirEscolha({ slotKey: el.dataset.slot })
+         })
       })
    },
 
    // abre a folha de baixo com as peças que cabem naquele espaço
-   openPicker(slotKey) {
-      const slot   = LOOK_SLOTS.find(s => s.key === slotKey)
-      const pieces = this.piecesForSlot(slot)
+   // Uma folha só, dois modos. Com slotKey, lista as peças que cabem naquele espaço e
+   // guarda ali. Sem slotKey (o botão de adicionar), lista o armário inteiro e deixa a
+   // zona da peça decidir onde ela entra. O que muda entre os dois é só o que listar e
+   // onde guardar, então não vale ter duas funções.
+   abrirEscolha({ slotKey = null } = {}) {
+      const slot   = slotKey ? LOOK_SLOTS.find(s => s.key === slotKey) : null
+      const pieces = slot ? this.piecesForSlot(slot) : this._buildClothes
       this._pickerSlot = slotKey
 
-      document.getElementById('picker-title').textContent = `Escolher ${slot.hint}`
+      document.getElementById('picker-title').textContent =
+         slot ? `Escolher ${slot.hint}` : 'Adicionar peça'
 
       const grid      = document.getElementById('picker-grid')
-      const currentId = this._slots[slotKey]
+      const currentId = slotKey ? this._slots[slotKey] : null
 
       if (pieces.length === 0) {
-         grid.innerHTML = `<p class="picker-empty">Nenhuma peça dessa categoria no armário ainda.</p>`
+         grid.innerHTML = `<p class="picker-empty">${slot
+            ? 'Nenhuma peça dessa categoria no armário ainda.'
+            : 'Seu armário está vazio.'}</p>`
       } else {
-         // se o espaço já tem peça, deixa tirar sem escolher outra
+         // tirar a peça do look sem escolher outra. Só faz sentido quando a folha foi
+         // aberta a partir de um espaço que já tem peça.
          const clearBtn = currentId
-            ? `<button class="picker-item picker-clear" data-clear="1">tirar</button>`
+            ? `<button class="picker-remove" data-clear="1">Tirar do look</button>`
             : ''
 
          grid.innerHTML = clearBtn + pieces.map(c => `
@@ -361,9 +508,12 @@ const LooksPage = {
          `).join('')
       }
 
-      grid.querySelectorAll('.picker-item').forEach(el => {
+      grid.querySelectorAll('.picker-item, .picker-remove').forEach(el => {
          el.addEventListener('click', () => {
-            this._slots[this._pickerSlot] = el.dataset.clear ? null : el.dataset.id
+            if (el.dataset.clear)          this._slots[this._pickerSlot] = null
+            else if (this._pickerSlot)     this._slots[this._pickerSlot] = el.dataset.id
+            else                           this.encaixar(el.dataset.id)
+
             this.closePicker()
             this.renderCanvas()
          })
@@ -453,21 +603,12 @@ const LooksPage = {
       btn.textContent = 'Gerando imagem...'
 
       try {
-         // separa as peças por posição
-         const byZone = { top: [], bottom: [], full: [], shoes: [], bag: [], accessory: [] }
-         clothes.forEach(c => (byZone[zoneOf(c.type)] || byZone.accessory).push(c))
+         // mesma decisão de layout da colagem, com dois acessórios em vez de três porque
+         // a fileira de baixo aqui tem 1080px de largura e não cabe um quinto quadro
+         const { principal, extras } = arranjoDoLook(clothes.map(c => ({ cloth: c })), 2)
+         const all = [...principal, ...extras].map(i => i.cloth)
+         const corpoInteiro = principal.length === 1 && zoneOf(principal[0].cloth.type) === 'full'
 
-         const extras = [
-            ...byZone.shoes.slice(0, 1),
-            ...byZone.bag.slice(0, 1),
-            ...byZone.accessory.slice(0, 2)
-         ]
-         const all = [
-            ...byZone.full.slice(0, 1),
-            ...byZone.top.slice(0, 1),
-            ...byZone.bottom.slice(0, 1),
-            ...extras
-         ]
 
          // carrega todas as imagens usadas
          const imgs = new Map()
@@ -495,18 +636,18 @@ const LooksPage = {
             ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
          }
 
-         if (byZone.full[0]) {
-            draw(byZone.full[0], 290, 180, 500, 740)
+         if (corpoInteiro) {
+            draw(principal[0].cloth, 290, 180, 500, 740)
          } else {
-            if (byZone.top[0])    draw(byZone.top[0], 315, 180, 450, 410)
-            if (byZone.bottom[0]) draw(byZone.bottom[0], 345, 560, 390, 460)
+            if (principal[0]) draw(principal[0].cloth, 315, 180, 450, 410)
+            if (principal[1]) draw(principal[1].cloth, 345, 560, 390, 460)
          }
 
          if (extras.length) {
             const boxW = 200, gap = 28
             const totalW = extras.length * boxW + (extras.length - 1) * gap
             let ex = (W - totalW) / 2
-            extras.forEach(c => { draw(c, ex, 1070, boxW, boxW); ex += boxW + gap })
+            extras.forEach(i => { draw(i.cloth, ex, 1070, boxW, boxW); ex += boxW + gap })
          }
 
          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
@@ -843,19 +984,35 @@ const LooksPage = {
       container.innerHTML = `
          <h2 class="section-title">Looks salvos</h2>
          <div class="saved-grid">
-            ${looks.map(look => `
+            ${looks.map(look => {
+               const pecas = look.clothes || []
+               // Até seis, e não quatro. Com quatro, um look de cinco perdia uma peça em
+               // silêncio: os acessórios eram os primeiros a sumir, justamente por virem
+               // por último na ordem do look.
+               const mostradas = pecas.slice(0, 6)
+
+               // clothes_ids é o que o look tem; clothes é o que ainda existe no armário.
+               // A diferença são peças apagadas depois que o look foi salvo, e o array não
+               // tem chave estrangeira pra limpar isso sozinho. Antes o card só encolhia,
+               // sem dizer nada.
+               const sumidas = (look.clothes_ids || []).length - pecas.length
+
+               return `
                <div class="saved-look-card" data-id="${escapeHtml(look.id)}">
                   <button class="cloth-delete-btn" data-id="${escapeHtml(look.id)}" aria-label="Remover look">×</button>
-                  <div class="saved-look-clothes">
-                     ${(look.clothes || []).slice(0, 4).map(c => `
+                  <div class="saved-look-clothes" data-muitas="${mostradas.length > 4}">
+                     ${mostradas.map(c => `
                         <img src="${escapeHtml(urlMiniatura(c.image_url, 96, 96))}"
                              onerror="this.onerror=null;this.src='${escapeHtml(c.image_url)}'"
                              alt="${escapeHtml(c.type || '')}" loading="lazy">
                      `).join('')}
                   </div>
                   <span class="look-mode">${escapeHtml(look.mode)}</span>
+                  ${sumidas > 0 ? `<span class="look-sumidas">${sumidas === 1
+                     ? '1 peça saiu do armário'
+                     : `${sumidas} peças saíram do armário`}</span>` : ''}
                </div>
-            `).join('')}
+            `}).join('')}
          </div>
          ${loadMoreBtn}
       `
