@@ -20,6 +20,20 @@ router = APIRouter(prefix="/clothes", tags=["clothes"])
 # async, porque await so existe dentro de funcao async.
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+# Quanto tempo o navegador pode guardar a imagem de uma peça sem perguntar de novo.
+#
+# Sem isso o Storage devolve "no-cache", e aí toda reabertura do app rebaixa o armário
+# inteiro: medido, 19 peças davam 4,34 MB e 9,4 segundos em TODA abertura, sem nem um 304.
+#
+# Um ano é seguro porque o caminho do arquivo carrega o id da peça, então conteúdo novo
+# nunca reusa caminho antigo. A única exceção é a troca de foto, que sobrescreve o mesmo
+# caminho de propósito, e ela já resolve isso acrescentando ?v=<timestamp> na URL.
+#
+# Atenção ao formato: o Supabase PREFIXA "public, max-age=" no valor que recebe. Passar o
+# cabeçalho inteiro aqui gera "public, max-age=public, max-age=31536000", que não vale
+# nada. Vai só o número de segundos.
+CACHE_DA_IMAGEM = "31536000"  # um ano
+
 
 # campos que o usuário pode corrigir quando a IA erra a classificação da peça
 class ClothUpdate(BaseModel):
@@ -67,7 +81,7 @@ async def upload_clothing(
       supabase.storage.from_("clothes").upload(
          storage_path,
          processed,
-         {"content-type": "image/png"}
+         {"content-type": "image/png", "cache-control": CACHE_DA_IMAGEM}
       )
    except Exception as e:
       raise HTTPException(status_code=500, detail=f"Erro no upload da imagem: {str(e)}")
@@ -222,7 +236,8 @@ async def replace_photo(
       supabase.storage.from_("clothes").upload(
          storage_path,
          processed,
-         {"content-type": "image/png", "upsert": "true"}
+         {"content-type": "image/png", "upsert": "true",
+          "cache-control": CACHE_DA_IMAGEM}
       )
    except Exception as e:
       raise HTTPException(status_code=500, detail=f"Erro ao trocar a imagem: {str(e)}")
