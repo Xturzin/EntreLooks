@@ -24,6 +24,35 @@ function escapeHtml(valor) {
       .replace(/'/g, '&#39;')
 }
 
+// Miniatura servida pelo próprio Supabase, no tamanho que a tela usa de verdade.
+//
+// A grade mostra a peça com uns 216px de largura e recebia o PNG cheio, de 750x1000 e 84 KB
+// em média. Pedindo o tamanho certo, o Storage devolve WebP: medido, 13 KB no dobro da
+// resolução, que é o que uma tela de celular resolve. O armário inteiro cai de 4,34 MB pra
+// perto de 670 KB.
+//
+// Só reescreve URL pública do Storage. Data URI, ou qualquer outra coisa, passa intacta.
+//
+// Duas coisas que a medição ensinou: pedir só a largura devolve a imagem deformada, porque
+// o modo padrão é recortar, então largura, altura e resize=contain vão sempre juntos. E o
+// que já estiver na query é preservado, porque a troca de foto acrescenta ?v=<timestamp> na
+// URL e perder isso traria a foto antiga de volta do cache.
+//
+// IMPORTANTE: quem usa isto tem que pôr onerror caindo na URL original. A transformação de
+// imagem é um recurso que o Supabase pode limitar no plano free sem aviso, e sem a queda o
+// armário ficaria em branco.
+function urlMiniatura(url, larguraCss, alturaCss) {
+   if (!url || !url.includes('/storage/v1/object/public/')) return url
+
+   const [base, query] = url.split('?')
+   const params = new URLSearchParams(query || '')
+   params.set('width',  String(larguraCss * 2))
+   params.set('height', String(alturaCss * 2))
+   params.set('resize', 'contain')
+
+   return base.replace('/object/public/', '/render/image/public/') + '?' + params.toString()
+}
+
 // nome que a pessoa escolheu (fica na conta). Usado nas saudações e no chat.
 let USER_NAME = null
 

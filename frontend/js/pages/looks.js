@@ -356,7 +356,7 @@ const LooksPage = {
 
          grid.innerHTML = clearBtn + pieces.map(c => `
             <button class="picker-item ${c.id === currentId ? 'selected' : ''}" data-id="${escapeHtml(c.id)}">
-               <img src="${escapeHtml(c.image_url)}" alt="">
+               <img src="${escapeHtml(c.image_url)}" alt="" loading="lazy">
             </button>
          `).join('')
       }
@@ -603,7 +603,7 @@ const LooksPage = {
                <button class="cloth-delete-btn planned-remove" data-plan="${escapeHtml(p.id)}" aria-label="Tirar do dia">×</button>
                <div class="planned-date">${this._formatDate(p.date)}</div>
                <div class="planned-thumbs">
-                  ${clothes.map(c => `<img src="${escapeHtml(c.image_url)}" alt="">`).join('')}
+                  ${clothes.map(c => `<img src="${escapeHtml(c.image_url)}" alt="" loading="lazy">`).join('')}
                </div>
             </div>
          `
@@ -848,7 +848,9 @@ const LooksPage = {
                   <button class="cloth-delete-btn" data-id="${escapeHtml(look.id)}" aria-label="Remover look">×</button>
                   <div class="saved-look-clothes">
                      ${(look.clothes || []).slice(0, 4).map(c => `
-                        <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+                        <img src="${escapeHtml(urlMiniatura(c.image_url, 96, 96))}"
+                             onerror="this.onerror=null;this.src='${escapeHtml(c.image_url)}'"
+                             alt="${escapeHtml(c.type || '')}" loading="lazy">
                      `).join('')}
                   </div>
                   <span class="look-mode">${escapeHtml(look.mode)}</span>

@@ -133,7 +133,9 @@ async loadStats() {
          <div class="mini-grid">
             ${data.most_worn.map(c => `
                <div class="mini-card">
-                  <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+                  <img src="${escapeHtml(urlMiniatura(c.image_url, 100, 100))}"
+                       onerror="this.onerror=null;this.src='${escapeHtml(c.image_url)}'"
+                       alt="${escapeHtml(c.type || '')}" loading="lazy">
                   <div class="mini-card-badge">${escapeHtml(c.wear_count)}x</div>
                </div>
             `).join('')}
@@ -145,7 +147,9 @@ async loadStats() {
          <div class="mini-grid">
             ${data.never_worn.map(c => `
                <div class="mini-card">
-                  <img src="${escapeHtml(c.image_url)}" alt="${escapeHtml(c.type || '')}">
+                  <img src="${escapeHtml(urlMiniatura(c.image_url, 100, 100))}"
+                       onerror="this.onerror=null;this.src='${escapeHtml(c.image_url)}'"
+                       alt="${escapeHtml(c.type || '')}" loading="lazy">
                </div>
             `).join('')}
          </div>
@@ -617,7 +621,9 @@ async loadStats() {
 
       grid.innerHTML = clothes.map(cloth => `
          <div class="cloth-card" data-id="${escapeHtml(cloth.id)}">
-            <img src="${escapeHtml(cloth.image_url)}" alt="${escapeHtml(cloth.type || 'Roupa')}" loading="lazy">
+            <img src="${escapeHtml(urlMiniatura(cloth.image_url, 216, 288))}"
+                 onerror="this.onerror=null;this.src='${escapeHtml(cloth.image_url)}'"
+                 alt="${escapeHtml(cloth.type || 'Roupa')}" loading="lazy">
             <button class="cloth-delete-btn" data-id="${escapeHtml(cloth.id)}" aria-label="Remover peça">×</button>
             <div class="cloth-info">
                <span class="cloth-type">${escapeHtml(cloth.nickname || cloth.type || 'Peça')}</span>
