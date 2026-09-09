@@ -2,9 +2,9 @@ import uuid
 import time
 from typing import Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from dependencies import get_current_user
-from services.image_service import remove_background, to_png, flatten_white, to_base64
+from services.image_service import to_png, flatten_white, to_base64
 from services.openai_service import categorize_clothing
 from services.supabase_service import supabase
 from services.rate_limiter import rate_limiter
@@ -46,7 +46,6 @@ class ClothUpdate(BaseModel):
 @router.post("/")
 async def upload_clothing(
    file: UploadFile = File(...),
-   bg_removed: bool = Form(False),
    user=Depends(get_current_user)
 ):
    # 30 e não 20 porque montar o armário é uma sessão só: com 20 a pessoa era obrigada a
@@ -61,9 +60,14 @@ async def upload_clothing(
    if len(image_bytes) > MAX_FILE_SIZE:
       raise HTTPException(status_code=400, detail="Imagem muito grande. Máximo 10MB.")
 
-   # se o navegador já recortou (bg_removed), o servidor só normaliza pra PNG.
-   # senão, faz o recorte aqui como plano B (retorna original se rembg indisponível).
-   processed = to_png(image_bytes) if bg_removed else remove_background(image_bytes)
+   # O servidor só normaliza o formato. O recorte de fundo acontece no navegador, e quando
+   # ele não dá conta a foto entra com fundo mesmo: recortar aqui derrubava a instância
+   # inteira (ver o comentário no image_service).
+   #
+   # O parâmetro bg_removed que existia aqui saiu junto. Ele só servia pra escolher entre
+   # normalizar e recortar, e agora o caminho é um só. Frontend antigo que ainda mande o
+   # campo não quebra: o FastAPI ignora campo de formulário que a rota não declara.
+   processed = to_png(image_bytes)
 
    # categoriza com IA usando a peça em fundo branco (transparência atrapalha a visão)
    try:
@@ -209,7 +213,6 @@ def list_clothes(
 async def replace_photo(
    cloth_id: str,
    file: UploadFile = File(...),
-   bg_removed: bool = Form(False),
    user=Depends(get_current_user)
 ):
    """Troca só a foto de uma peça já cadastrada, mantendo o resto (id, categoria,
@@ -235,8 +238,8 @@ async def replace_photo(
    if len(image_bytes) > MAX_FILE_SIZE:
       raise HTTPException(status_code=400, detail="Imagem muito grande. Máximo 10MB.")
 
-   # se já veio recortada do navegador, só normaliza; senão recorta aqui
-   processed    = to_png(image_bytes) if bg_removed else remove_background(image_bytes)
+   # mesma coisa do upload: aqui só normaliza o formato
+   processed    = to_png(image_bytes)
    storage_path = f"{user.id}/{cloth_id}.png"
 
    # sobrescreve o arquivo no mesmo caminho (upsert)

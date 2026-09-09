@@ -209,14 +209,10 @@ async loadStats() {
       let processed = null
       try { processed = await this.processPhoto(resized) } catch (e) {}
 
-      if (processed) {
-         this.processedFile      = processed
-         this.processedBgRemoved = true
-      } else {
-         // plano B: guarda a foto original e o servidor recorta no envio
-         this.processedFile      = resized
-         this.processedBgRemoved = false
-      }
+      // Sem recorte, a foto entra com fundo mesmo. O servidor não recorta mais, porque
+      // fazer isso lá derrubava a instância inteira, então o plano B agora é a peça entrar
+      // como está e a pessoa arrumar depois pelo "Trocar foto".
+      this.processedFile = processed || resized
 
       imgEl.src = URL.createObjectURL(this.processedFile)
       status.classList.add('hidden')
@@ -350,7 +346,6 @@ async loadStats() {
       try {
          const formData = new FormData()
          formData.append('file', this.processedFile)
-         formData.append('bg_removed', this.processedBgRemoved ? 'true' : 'false')
 
          const response = await API.post('/clothes/', formData)
 
@@ -593,12 +588,10 @@ async loadStats() {
       try { processed = await this.processPhoto(resized) } catch (e) {}
 
       const fileToSend = processed || resized
-      const bgRemoved  = !!processed
 
       btn.textContent = 'Enviando...'
       const formData = new FormData()
       formData.append('file', fileToSend)
-      formData.append('bg_removed', bgRemoved ? 'true' : 'false')
 
       const response = await API.post(`/clothes/${this._editingId}/photo`, formData)
 

@@ -1,7 +1,15 @@
-# Versao do Python: 3.12. Quem trava isso e o onnxruntime 1.19.2, que so tem wheel ate
-# cp312 (nao existe cp313), e o rembg 2.0.57, que declara requires_python <3.13. Subir pra
-# 3.13 obrigaria a mexer nos dois, e o rembg novo arrasta o Pillow junto (exige >=12.1),
-# que e justamente o que a gente decidiu nao mexer agora. Ver o .python-version na raiz.
+# Versao do Python: 3.13.
+#
+# O teto era 3.12 e quem prendia eram o onnxruntime (wheel so ate cp312) e o rembg
+# (requires_python <3.13). Os dois existiam por causa do recorte de fundo no servidor, que
+# saiu: no plano free do Render ele levava 61,9s, terminava em 502 e derrubava a instancia.
+#
+# Sem eles, quem manda no teto e o Pillow 10.4, que tem wheel ate cp313. Todo o resto e
+# codigo puro (py3-none-any) ou wheel abi3 que vale de 3.11 pra cima, no caso do
+# cryptography. Ou seja, 3.13 e o limite hoje, e 3.14 exigiria subir o Pillow.
+#
+# A versao que vale de verdade e a variavel PYTHON_VERSION no painel do Render. Este
+# arquivo nao a define, so documenta o teto.
 
 # core
 fastapi==0.141.1
@@ -37,13 +45,13 @@ cryptography==50.0.1
 # pra Groq via base_url com chat.completions.create.
 openai==1.52.0
 
-# imagem (onnxruntime carregado sob demanda)
-# Pillow MANTIDO no 10.4 de proposito, nao e abandono. Subir daria dois majors de uma vez
-# (10 -> 12) justamente no image_service, que acabou de mudar com o redimensionamento
-# pre-IA e nao tem teste automatizado cobrindo. Se o recorte quebrasse, so apareceria numa
-# foto torta depois de ja estar em producao.
-# O onnxruntime e o rembg ficam onde estao pelo mesmo motivo do teto de Python la em cima:
-# o pin do onnxruntime e obrigatorio porque o rembg nao o traz mais como dependencia base.
+# imagem
+# O que sobrou pro Pillow fazer e leve: normalizar o formato do que sobe, achatar a peca
+# num fundo branco e encolher pra 512 antes de mandar pra IA. O recorte de fundo acontece
+# no navegador.
+#
+# MANTIDO no 10.4 de proposito, nao e abandono. Subir daria dois majors de uma vez (10 ->
+# 12) no image_service, que nao tem teste automatizado cobrindo: uma quebra so apareceria
+# numa foto torta ja em producao. Ele tambem e, agora, o unico pacote que limita a versao
+# do Python, entao subir o Pillow e o caminho pra passar de 3.13 quando fizer falta.
 Pillow==10.4.0
-onnxruntime==1.19.2
-rembg==2.0.57

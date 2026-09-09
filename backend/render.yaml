@@ -18,10 +18,15 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      # 3.12 e o teto: o onnxruntime 1.19.2 nao tem wheel pra 3.13. O porque completo esta
-      # no backend/requirements.txt e no .python-version da raiz.
+      # 3.13 e o teto hoje, e quem manda nele e o Pillow 10.4. O que prendia em 3.12 era o
+      # onnxruntime, que saiu junto com o recorte de fundo no servidor. O porque completo
+      # esta no backend/requirements.txt.
+      #
+      # ATENCAO a ordem: este arquivo nao e Blueprint, entao mudar aqui nao muda nada. A
+      # troca de verdade e no painel do Render, e ela so pode acontecer DEPOIS que o
+      # requirements.txt sem onnxruntime estiver publicado. Ao contrario, o build quebra.
       - key: PYTHON_VERSION
-        value: "3.12"
+        value: "3.13"
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY

@@ -10,56 +10,17 @@ from PIL import Image
 # 512 pra sobrar margem em peça com estampa ou textura fina, que o teste não cobriu.
 TAMANHO_PARA_IA = 512
 
-# session carregada sob demanda, nunca no import
-_rembg_session = None
-
-def _get_session():
-   global _rembg_session
-
-   if _rembg_session is False:
-      return None
-
-   if _rembg_session is None:
-      try:
-         from rembg import new_session
-         # u2netp é o modelo leve (~4MB vs 168MB do u2net)
-         _rembg_session = new_session("u2netp")
-      except Exception:
-         _rembg_session = False
-         return None
-
-   return _rembg_session
-
-def _to_png(image_bytes: bytes) -> bytes:
-   """Converte qualquer formato suportado pelo Pillow para PNG RGB."""
-   img    = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-   output = io.BytesIO()
-   img.save(output, format="PNG")
-   return output.getvalue()
-
-def remove_background(image_bytes: bytes) -> bytes:
-   session = _get_session()
-
-   try:
-      if session is not None:
-         from rembg import remove as rembg_remove
-         result     = rembg_remove(image_bytes, session=session)
-         img_rgba   = Image.open(io.BytesIO(result)).convert("RGBA")
-         background = Image.new("RGBA", img_rgba.size, (255, 255, 255, 255))
-         background.paste(img_rgba, mask=img_rgba.split()[3])
-         output = io.BytesIO()
-         background.convert("RGB").save(output, format="PNG")
-         return output.getvalue()
-      else:
-         # rembg indisponível: só normaliza para PNG
-         return _to_png(image_bytes)
-
-   except Exception:
-      # último recurso: tenta normalizar; se falhar, retorna original
-      try:
-         return _to_png(image_bytes)
-      except Exception:
-         return image_bytes
+# O recorte de fundo NÃO acontece mais aqui. Ele era feito com rembg e o modelo u2netp, e
+# saiu depois de medido: no plano free do Render uma foto levava 61,9 segundos e terminava
+# em HTTP 502, deixando a instância respondendo 503 por um tempo. Ou seja, o upload de uma
+# pessoa derrubava o app de todo mundo. A mesma inferência roda em 0,49s numa máquina comum,
+# então o problema não é o modelo, é a fração de CPU do plano free.
+#
+# Agora, quando o navegador não consegue recortar, a foto entra como está, com fundo. A peça
+# fica no armário e a pessoa arruma depois pelo "Trocar foto", que já existe. É melhor que
+# recusar o upload por uma limitação de infra que não é problema dela.
+#
+# Tirar o rembg levou junto o onnxruntime, que era o que prendia o projeto no Python 3.12.
 
 def to_png(image_bytes: bytes) -> bytes:
    """Normaliza pra PNG mantendo a transparência. Usado quando o recorte já foi
