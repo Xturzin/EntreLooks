@@ -135,24 +135,32 @@ def wardrobe_stats(user=Depends(get_current_user)):
 
 @router.delete("/{cloth_id}")
 def delete_clothing(cloth_id: str, user=Depends(get_current_user)):
-   result = (
+   # Antes daqui havia um select só pra devolver 404 quando a peça não era da pessoa. Ele
+   # era uma ida ao Supabase inteira (medido: 1483ms na rota, três idas em sequência, e a
+   # distância Render para São Paulo é o que custa). O próprio delete já filtra por user_id
+   # e devolve as linhas que apagou, então dá pra decidir o 404 com o retorno dele.
+   apagadas = (
       supabase.table("clothes")
-      .select("id")
+      .delete()
       .eq("id", cloth_id)
       .eq("user_id", user.id)
       .execute()
    )
 
-   if not result.data:
+   if not apagadas.data:
       raise HTTPException(status_code=404, detail="Peça não encontrada")
 
-   # remove imagem do storage (não bloqueia se falhar)
+   # O caminho no Storage nunca veio do select: ele é montado a partir do id de quem está
+   # logado e do id da peça, a mesma convenção que o upload e a troca de foto usam. Por isso
+   # tirar o select não deixa a imagem órfã.
+   #
+   # A remoção vem depois do delete de propósito: se a peça não era da pessoa, a rota já saiu
+   # com 404 acima e nem chega a encostar no arquivo. Falha aqui não desfaz o delete, porque
+   # peça sem imagem é um estado bem melhor do que imagem sem peça.
    try:
       supabase.storage.from_("clothes").remove([f"{user.id}/{cloth_id}.png"])
    except Exception:
       pass
-
-   supabase.table("clothes").delete().eq("id", cloth_id).eq("user_id", user.id).execute()
 
    return {"deleted": True}
 
