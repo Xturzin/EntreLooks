@@ -39,6 +39,10 @@
    flex-direction: column;
    gap: var(--space-sm);
    aspect-ratio: 3 / 4;
+   /* o aspect-ratio sozinho é só uma preferência: sem isto o conteúdo empurra a altura e o
+      quadro cresce, porque a imagem da peça tem altura intrínseca de 1000px */
+   min-height: 0;
+   overflow: hidden;
    margin-bottom: var(--space-md);
    box-shadow: var(--shadow-md);
 }
@@ -46,7 +50,10 @@
 /* grid-auto-rows: 1fr faz uma peça sozinha ocupar tudo e duas dividirem meio a meio, sem
    precisar contar quantas são no JavaScript */
 .colagem-principal {
-   flex: 1 1 auto;
+   /* base 0, e não auto: com auto o tamanho de partida é o do conteúdo, e aí a altura da
+      imagem manda no quadro em vez de o quadro mandar na imagem. Medido: o canvas ficava
+      com 1132px de altura num quadro que devia ter 523 */
+   flex: 1 1 0;
    min-height: 0;
    display: grid;
    grid-auto-rows: 1fr;
