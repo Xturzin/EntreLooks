@@ -127,21 +127,35 @@ async def generate_look_ai(clothes: list, mode: str, weather: dict = None, rejec
 
    rejection_context = ""
    if rejected_context:
-      items = list({
-         f"{c.get('type', '')} {c.get('color', '')}".strip()
-         for c in rejected_context[:10]
-         if c.get('type')
-      })[:6]
+      # Mesmo motivo do _pecas_dos_looks: list(set) devolve ordem que muda a cada
+      # processo, e com ela mudam os seis nomes que a IA lê. Aqui a deduplicação preserva
+      # a ordem de chegada, que já vem estável de lá.
+      vistos, items = set(), []
+      for c in rejected_context[:10]:
+         if not c.get('type'):
+            continue
+         nome = f"{c.get('type', '')} {c.get('color', '')}".strip()
+         if nome and nome not in vistos:
+            vistos.add(nome)
+            items.append(nome)
+      items = items[:6]
       if items:
          rejection_context = f"\nEvite combinar peças similares às que o usuário rejeitou antes: {', '.join(items)}."
 
    positive_hint = ""
    if positive_context:
-      items = list({
-         f"{c.get('type', '')} {c.get('color', '')}".strip()
-         for c in positive_context[:10]
-         if c.get('type')
-      })[:6]
+      # Mesmo motivo do _pecas_dos_looks: list(set) devolve ordem que muda a cada
+      # processo, e com ela mudam os seis nomes que a IA lê. Aqui a deduplicação preserva
+      # a ordem de chegada, que já vem estável de lá.
+      vistos, items = set(), []
+      for c in positive_context[:10]:
+         if not c.get('type'):
+            continue
+         nome = f"{c.get('type', '')} {c.get('color', '')}".strip()
+         if nome and nome not in vistos:
+            vistos.add(nome)
+            items.append(nome)
+      items = items[:6]
       if items:
          positive_hint = f"\nO usuário já gostou de looks com: {', '.join(items)}. Prefira peças similares quando possível."
 

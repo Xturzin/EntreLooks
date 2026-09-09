@@ -209,11 +209,22 @@ def _get_rejection_context(user_id: str, clothes_map: dict) -> list:
 # armário grande. Nos dois casos ela também não está entre as opções que a IA recebe, então
 # citá-la no contexto seria falar de roupa que não pode ser escolhida.
 def _pecas_dos_looks(looks: list, clothes_map: dict) -> list:
-   ids = list({
-      cid
-      for look in looks
-      for cid in look.get("clothes_ids", [])
-   })
+   # Deduplicação preservando a ordem, e não um set.
+   #
+   # Com set, a ordem de iteração depende do hash das strings, que o Python embaralha a cada
+   # processo. O efeito era a frase que chega no prompt mudar a cada restart do Render, com
+   # os mesmos dados e o mesmo código: a mesma pergunta dava resposta diferente por acidente,
+   # e quem fosse comparar saídas ia caçar uma regressão que não existe.
+   #
+   # A ordem daqui passa a ser a dos looks recebidos, que vêm do mais recente pro mais
+   # antigo. Além de estável, é a ordem que faz sentido quando o corte em 20 entra: peça de
+   # look recente conta mais que peça de look velho.
+   vistos, ids = set(), []
+   for look in looks:
+      for cid in look.get("clothes_ids", []):
+         if cid not in vistos:
+            vistos.add(cid)
+            ids.append(cid)
 
    pecas = []
    for cid in ids[:20]:
