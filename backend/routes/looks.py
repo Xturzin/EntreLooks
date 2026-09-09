@@ -171,32 +171,32 @@ def _get_positive_context(user_id: str, clothes_map: dict) -> list:
    return _pecas_dos_looks(saved.data, clothes_map)
 
 def _get_rejection_context(user_id: str, clothes_map: dict) -> list:
+   # Uma consulta só, com o look embutido na resposta das interações.
+   #
+   # Antes eram duas: uma pegava os look_id das rejeições e a outra buscava esses looks. O
+   # PostgREST resolve isso sozinho porque look_interactions.look_id tem chave estrangeira
+   # pra looks, e "looks(clothes_ids)" no select traz o look junto. Numa rota em que cada
+   # ida ao Supabase custa perto de 190ms, isso é uma ida a menos.
+   #
+   # De quebra, a ordem melhora: o embed respeita a ordenação das interações (mais recentes
+   # primeiro), enquanto o "in" da consulta antiga devolvia numa ordem que o banco não
+   # promete. Isso conta porque a lista alimenta o corte em 20 do _pecas_dos_looks.
    try:
-      rejections = (
+      rejeicoes = (
          supabase.table("look_interactions")
-         .select("look_id")
+         .select("look_id, looks(clothes_ids)")
          .eq("user_id", user_id)
          .eq("action", "rejected")
          .order("created_at", desc=True)
          .limit(8)
          .execute()
       )
-
-      if not rejections.data:
-         return []
-
-      rejected_ids = [r["look_id"] for r in rejections.data]
-
-      rejected_looks = (
-         supabase.table("looks")
-         .select("clothes_ids")
-         .in_("id", rejected_ids)
-         .execute()
-      )
    except Exception:
       return []
 
-   return _pecas_dos_looks(rejected_looks.data, clothes_map)
+   # look apagado deixa a interação órfã com o embed vindo nulo, então filtra
+   looks = [r["looks"] for r in (rejeicoes.data or []) if r.get("looks")]
+   return _pecas_dos_looks(looks, clothes_map)
 
 # Junta as peças que aparecem nos looks recebidos e devolve as três colunas que o prompt
 # usa. Os ids passam por um set porque a mesma peça costuma repetir em vários looks, e o
