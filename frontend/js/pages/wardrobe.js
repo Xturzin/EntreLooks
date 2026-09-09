@@ -308,10 +308,26 @@ async loadStats() {
       const dw = cropW * scale, dh = cropH * scale
       octx.drawImage(src, minX, minY, cropW, cropH, (TW - dw) / 2, (TH - dh) / 2, dw, dh)
 
+      // WebP, e não PNG. O quadro continua 750x1000, então não se perde resolução: o que
+      // muda é o formato. Medido com a mesma peça recortada: 280 KB em PNG contra 38 KB em
+      // WebP a 0.92, ou seja, um sétimo do que sobe pela rede em cada cadastro.
+      //
+      // O 0.92 é alto de propósito. WebP com perda pode deixar halo na borda do recorte, e
+      // é justamente a borda que faz a peça parecer bem recortada. Descendo pra 0.85 o
+      // arquivo cai pra 22 KB, o que não paga o risco.
+      //
+      // O Safari antigo ignora o tipo pedido no toBlob e devolve PNG assim mesmo. Por isso
+      // o nome e o tipo do arquivo saem do blob que voltou, e não do que a gente pediu: o
+      // backend aceita os dois e converte pra PNG na hora de guardar.
       return await new Promise((resolve) => {
          out.toBlob(
-            (b) => resolve(b ? new File([b], 'peca.png', { type: 'image/png' }) : null),
-            'image/png'
+            (b) => {
+               if (!b) return resolve(null)
+               const tipo = b.type || 'image/png'
+               const ext  = tipo.includes('webp') ? 'webp' : 'png'
+               resolve(new File([b], `peca.${ext}`, { type: tipo }))
+            },
+            'image/webp', 0.92
          )
       })
    },
