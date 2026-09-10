@@ -2,6 +2,13 @@
    padding-bottom: var(--space-xl);
 }
 
+/* O agrupador do que é ação (clima, botão e o look que aparece depois) existe só pro
+   desktop. No celular ele some do fluxo com display: contents, então os três filhos ficam
+   soltos dentro da .home-page exatamente como antes e o layout do celular não muda em nada. */
+.home-acao {
+   display: contents;
+}
+
 /* saudação */
 .home-greeting {
    margin-bottom: var(--space-lg);
@@ -202,11 +209,40 @@
    .home-page {
       max-width: 900px;
       margin: 0 auto;
+
+      /* Duas colunas: a ação à esquerda e o resumo do armário à direita.
+
+         Antes daqui a home era uma coluna só, e os dois cards de estatística tinham teto de
+         520px dentro de uma página de 900. Sobravam 380px de nada à direita deles, o que
+         numa captura de tela lê como página quebrada. O teto dos 520 não era o culpado: sem
+         ele os dois cards viravam painéis de 437px com um número de 32px dentro, que é pior.
+         O que faltava era usar a largura, não esticar o conteúdo pra dentro dela.
+
+         2fr e 1fr, e não uma largura fixa pra coluna da direita, porque o desktop aqui
+         começa em 720: com valor fixo, na janela estreita a coluna da ação ficaria mais
+         magra que a das estatísticas. Com fração as duas encolhem juntas e a proporção se
+         mantém em qualquer largura. */
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      column-gap: var(--space-lg);
+      /* start pra coluna da direita não esticar até a altura da esquerda, que cresce quando
+         o look sugerido aparece */
+      align-items: start;
    }
 
-   /* dois cards fixos no HTML, mesmo caso do armário: teto pra eles não virarem
-      dois painéis gigantes com um número dentro. */
+   /* a saudação é título da página inteira, então atravessa as duas colunas */
+   .home-greeting {
+      grid-column: 1 / -1;
+   }
+
+   /* volta a ser caixa de verdade pra ocupar a coluna da esquerda inteira */
+   .home-acao {
+      display: block;
+   }
+
+   /* na coluna estreita os dois cards empilham, e aí não precisam mais de teto: quem limita
+      a largura deles agora é a própria coluna */
    .home-stats {
-      max-width: 520px;
+      grid-template-columns: minmax(0, 1fr);
    }
 }

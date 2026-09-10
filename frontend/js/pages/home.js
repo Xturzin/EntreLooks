@@ -35,14 +35,16 @@ const HomePage = {
                <h1 class="home-greeting-title">O que vamos vestir?</h1>
             </div>
 
-            <div id="weather-widget" class="weather-loading"></div>
+            <div class="home-acao">
+               <div id="weather-widget" class="weather-loading"></div>
 
-            <button class="quick-btn" id="quick-btn">
-               <span id="quick-btn-text">Me ajuda a me vestir</span>
-               <span class="quick-btn-label" id="quick-mode-label"></span>
-            </button>
+               <button class="quick-btn" id="quick-btn">
+                  <span id="quick-btn-text">Me ajuda a me vestir</span>
+                  <span class="quick-btn-label" id="quick-mode-label"></span>
+               </button>
 
-            <div id="home-look" class="home-look hidden"></div>
+               <div id="home-look" class="home-look hidden"></div>
+            </div>
 
             <div class="home-stats">
                <div class="home-stat-card" id="stat-wardrobe">
