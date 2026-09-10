@@ -31,12 +31,22 @@
    nomeadas com sete espaços fixos, e o preço disso era que espaço sem peça virava buraco
    ou contorno tracejado. Como agora só entra o que foi escolhido, o layout precisa se
    ajustar à quantidade, e uma pilha faz isso sozinha. */
+/* O quadro é um grid de uma coluna, que virá três quando o look tiver extras. */
 .look-canvas {
    background: var(--surface);
    border-radius: var(--radius-lg);
    padding: var(--space-md);
-   display: flex;
-   flex-direction: column;
+   display: grid;
+   grid-template-columns: minmax(0, 1fr);
+
+   /* LEIA ANTES DE TROCAR POR 1fr. Parece a mesma coisa e não é: 1fr tem mínimo automático,
+      que é o tamanho do conteúdo, e a foto da peça tem 1000px de altura intrínseca. Com 1fr
+      puro a imagem empurra a trilha, a trilha empurra o quadro e o aspect-ratio logo abaixo
+      vira só uma sugestão. Isso já aconteceu de verdade: o quadro ficou com 1132px de altura
+      num lugar que devia ter 523. O minmax(0, ...) zera esse mínimo e devolve o controle da
+      altura pro quadro. Vale aqui, no .colagem-principal e nas calhas. */
+   grid-template-rows: minmax(0, 1fr);
+
    gap: var(--space-sm);
    aspect-ratio: 3 / 4;
    /* o aspect-ratio sozinho é só uma preferência: sem isto o conteúdo empurra a altura e o
@@ -47,37 +57,111 @@
    box-shadow: var(--shadow-md);
 }
 
-/* grid-auto-rows: 1fr faz uma peça sozinha ocupar tudo e duas dividirem meio a meio, sem
-   precisar contar quantas são no JavaScript */
+/* As três colunas: calha, centro, calha. Os extras ficam nas calhas, um de cada lado, em vez
+   de amontoados numa fileira embaixo.
+
+   22% não é número escolhido no olho. Com ele cada caixa do centro sai exatamente na
+   proporção 3 por 4, que é a da foto da peça, então a imagem preenche a caixa sem sobrar
+   borda. Passando de 22,06% o centro fica estreito demais, a imagem passa a ser limitada
+   pela largura em vez da altura e as peças grandes começam a encolher.
+
+   A classe só entra quando existe extra. Sem extra o centro toma o quadro inteiro, senão uma
+   peça de corpo inteiro sozinha ficaria estrangulada entre duas calhas vazias. */
+.look-canvas.tem-calhas {
+   grid-template-columns: 22% minmax(0, 1fr) 22%;
+}
+
+/* Uma calha só, quando o centro tem uma peça sozinha. Peça de corpo inteiro é alta e quem
+   limita ela é a largura do centro, então tirar uma calha faz diferença de verdade: o
+   vestido vai de 179 pra 268 de largura. O porquê completo está no arranjoDoLook. */
+.look-canvas.tem-calha-direita {
+   grid-template-columns: minmax(0, 1fr) 22%;
+}
+
+/* grid-auto-rows faz duas peças dividirem a altura meio a meio, sem precisar contar quantas
+   são no JavaScript. O minmax(0, ...) aqui é pelo mesmo motivo do quadro. */
 .colagem-principal {
-   /* base 0, e não auto: com auto o tamanho de partida é o do conteúdo, e aí a altura da
-      imagem manda no quadro em vez de o quadro mandar na imagem. Medido: o canvas ficava
-      com 1132px de altura num quadro que devia ter 523 */
-   flex: 1 1 0;
+   min-width: 0;
    min-height: 0;
    display: grid;
-   grid-auto-rows: 1fr;
+   grid-auto-rows: minmax(0, 1fr);
    gap: var(--space-sm);
 }
 
-.colagem-extras {
-   flex: 0 0 26%;
+/* Uma peça só no centro. Sem isto a caixa dela estica até o pé do quadro e a foto fica
+   boiando dentro de um retângulo claro grande, que lê como espaço vazio justamente onde a
+   gente não quer. Com a proporção 3 por 4 a caixa encosta na foto e desaparece.
+
+   Aqui o grid-auto-rows volta a ser auto de propósito, e isso é seguro porque a altura da
+   caixa passa a vir do aspect-ratio abaixo, não do conteúdo. O max-height é a trava: se um
+   dia o quadro ficar mais baixo que a caixa, ela para de crescer em vez de transbordar. */
+.colagem-principal-unica {
+   grid-auto-rows: auto;
+   align-content: center;
+}
+
+.colagem-principal-unica .look-slot {
+   aspect-ratio: 3 / 4;
+   max-height: 100%;
+}
+
+/* As calhas. A da esquerda empilha a partir do topo e a da direita a partir da base, e é só
+   isso que produz o escalonamento em diagonal: com um extra de cada lado eles não ficam
+   parados na mesma altura. Uma regra, sem caso especial por quantidade. */
+.colagem-calha {
+   min-width: 0;
    min-height: 0;
    display: flex;
+   flex-direction: column;
+   gap: var(--space-sm);
+}
+
+.colagem-esquerda {
+   justify-content: flex-start;
+}
+
+.colagem-direita {
+   justify-content: flex-end;
+}
+
+/* quadrado e sem esticar: um calçado sozinho na calha não pode virar uma faixa alta ocupando
+   a coluna toda */
+.colagem-calha .look-slot {
+   flex: 0 0 auto;
+   aspect-ratio: 1;
+}
+
+/* Look só de acessório, sem peça de corpo. Aqui as calhas não servem, porque seriam duas
+   tirinhas nas bordas com o meio vazio, pior que a fileira antiga. Então os extras viram um
+   bloco de duas colunas centralizado no quadro. */
+.colagem-solta {
+   min-width: 0;
+   min-height: 0;
+   display: flex;
+   flex-wrap: wrap;
+   align-content: center;
    justify-content: center;
    gap: var(--space-sm);
 }
 
-/* o max-width impede que um calçado sozinho vire uma faixa da largura toda, e com cinco
-   extras o flex encolhe todos por igual */
-.colagem-extras .look-slot {
-   flex: 1 1 0;
-   max-width: 30%;
+/* Duas por fileira. É flex com quebra, e não grid, porque com três acessórios o terceiro
+   sobra sozinho na última fileira: no grid ele encostaria na coluna da esquerda, e aqui o
+   justify-content centraliza ele. */
+.colagem-solta .look-slot {
+   flex: 0 0 auto;
+   width: calc(50% - var(--space-sm) / 2);
+   aspect-ratio: 1;
 }
 
-/* look só de acessório: sem bloco principal, a fileira toma o quadro */
-.look-canvas > .colagem-extras:only-child {
-   flex: 1 1 auto;
+/* um acessório só não tem por que ficar do tamanho de meio quadro */
+.colagem-solta[data-n="1"] .look-slot {
+   width: 62%;
+}
+
+/* com cinco, três por fileira: em duas colunas seriam três fileiras e a última passaria do
+   pé do quadro */
+.colagem-solta[data-n="5"] .look-slot {
+   width: calc(33.333% - var(--space-sm) * 2 / 3);
 }
 
 .look-canvas.look-canvas-vazia {
@@ -544,10 +628,9 @@
 
    /* a colagem é o único lugar do app que precisa encolher em vez de crescer.
       Ela é 3 por 4, então num container de 1148 ela viraria 1148 por 1531 e a
-      pessoa teria que rolar a página pra ver um look inteiro. Fora que as calhas
-      de acessório são fixas em 64px e não acompanham o centro, então o meio
-      esticaria e as laterais virariam tirinhas. Em 520 ela fica uns 17% maior
-      que hoje e ainda cabe na altura da tela. */
+      pessoa teria que rolar a página pra ver um look inteiro. Em 520 ela fica uns
+      17% maior que hoje e ainda cabe na altura da tela. As calhas dos extras são
+      em porcentagem, então acompanham esse limite sem regra extra. */
    .look-canvas {
       max-width: 520px;
       margin-left: auto;

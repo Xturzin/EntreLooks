@@ -36,7 +36,7 @@ function zoneOf(type) {
    return 'top'
 }
 
-// Decide o que vai grande no meio do look e o que vai na fileira de baixo.
+// Decide o que vai grande no meio do look e como os extras se espalham em volta dele.
 //
 // Mora aqui, fora do desenho, porque dois lugares precisam da MESMA decisão e desenham de
 // jeitos diferentes: a colagem da aba Montar monta elementos no DOM, e o compartilhar
@@ -47,10 +47,16 @@ function zoneOf(type) {
 // junto porque a colagem precisa saber em que espaço a peça está pra abrir a folha certa
 // quando alguém tocar nela; o compartilhar simplesmente ignora esse campo.
 //
-// O maxAcessorios existe porque os dois cabem em quantidades diferentes: a colagem tem três
-// lugares de acessório, e a imagem compartilhada só comporta dois sem a fileira estourar a
-// largura de 1080px.
-function arranjoDoLook(itens, maxAcessorios = 3) {
+// Os extras não vão mais numa fileira embaixo do centro. Eles se dividem em duas calhas,
+// uma de cada lado. Isso mudou por dois motivos medidos: com três ou mais, a fileira
+// espremia todos lado a lado e a colagem perdia o ar de composição; e ela comia 26% da
+// altura do quadro, então acrescentar um colar encolhia a roupa de 179 por 238 pra 128 por
+// 170. Com as calhas o centro tem a mesma altura sempre, tenha o look duas peças ou sete.
+//
+// Quem escolhe o lado é a POSIÇÃO na lista, não o tipo da peça. Nada fica reservado
+// esperando bolsa aparecer: se o look não tem calçado, quem for o primeiro extra assume o
+// lugar que seria dele.
+function arranjoDoLook(itens) {
    const porZona = { full: [], top: [], bottom: [], shoes: [], bag: [], accessory: [] }
    itens.forEach(item => (porZona[zoneOf(item.cloth.type)] || porZona.accessory).push(item))
 
@@ -62,10 +68,28 @@ function arranjoDoLook(itens, maxAcessorios = 3) {
    const extras = [
       ...porZona.shoes.slice(0, 1),
       ...porZona.bag.slice(0, 1),
-      ...porZona.accessory.slice(0, maxAcessorios),
+      // três porque são três espaços de acessório no LOOK_SLOTS. O corte é só uma trava
+      // pra look salvo com dado estranho, não uma escolha de layout.
+      ...porZona.accessory.slice(0, 3),
    ]
 
-   return { principal, extras }
+   // Quando o centro tem uma peça só, os extras vão todos pra uma calha, à direita.
+   //
+   // Isso não é capricho, é medida. Peça de corpo inteiro é alta e usa o quadro inteiro,
+   // então ela é limitada pela LARGURA do centro. Com calha dos dois lados o centro cai pra
+   // 179px e o vestido sai com 179 de largura, MENOR do que os 263 que ele tinha na fileira
+   // antiga. Com uma calha só o centro fica em 268 e o vestido sai com 268, maior do que
+   // era. Duas calhas valem a pena quando o centro tem duas peças empilhadas, porque aí
+   // cada caixa é limitada pela altura e a largura sobrando não seria aproveitada mesmo.
+   const umaCalha = principal.length < 2
+
+   // Alterna os lados começando pela direita. O primeiro extra costuma ser o calçado, e
+   // calçado embaixo à direita é onde o olho vai procurar. Daí em diante é revezamento
+   // simples, então cada lado sempre fica com metade, ou com uma peça de diferença.
+   const direita  = umaCalha ? extras : extras.filter((_, i) => i % 2 === 0)
+   const esquerda = umaCalha ? []     : extras.filter((_, i) => i % 2 === 1)
+
+   return { principal, extras, esquerda, direita }
 }
 
 const LooksPage = {
@@ -450,7 +474,7 @@ const LooksPage = {
 
       canvas.classList.remove('look-canvas-vazia')
 
-      const { principal, extras } = arranjoDoLook(itens)
+      const { principal, extras, esquerda, direita } = arranjoDoLook(itens)
 
       const desenhar = (item) => `
          <button class="look-slot filled" data-slot="${item.slot.key}">
@@ -458,11 +482,36 @@ const LooksPage = {
          </button>
       `
 
-      // O bloco principal só existe se houver peça de corpo, senão a fileira de baixo
-      // ocupa o quadro inteiro em vez de sobrar um espaço morto em cima.
-      canvas.innerHTML =
-         (principal.length ? `<div class="colagem-principal">${principal.map(desenhar).join('')}</div>` : '') +
-         (extras.length    ? `<div class="colagem-extras">${extras.map(desenhar).join('')}</div>` : '')
+      // Quantas calhas o quadro abre. Sem extra nenhum, nenhuma, e o centro toma o quadro
+      // inteiro. Com uma peça só no centro, uma calha à direita. Com duas peças empilhadas,
+      // as duas calhas, e a da esquerda continua reservada mesmo vazia pra o centro não sair
+      // do meio quando o look tem um extra só. O porquê das larguras está no arranjoDoLook.
+      const calhas = !extras.length || !principal.length ? 0 : (principal.length > 1 ? 2 : 1)
+      canvas.classList.toggle('tem-calhas', calhas === 2)
+      canvas.classList.toggle('tem-calha-direita', calhas === 1)
+
+      if (!principal.length) {
+         // Look só de acessório. Sem centro as calhas não fazem sentido, porque seriam duas
+         // tirinhas nas bordas com o meio vazio, pior que a fileira antiga. Então os extras
+         // viram um bloco no meio do quadro. O data-n existe porque com um acessório só a
+         // grade de duas colunas jogaria ele na metade esquerda.
+         canvas.innerHTML =
+            `<div class="colagem-solta" data-n="${extras.length}">${extras.map(desenhar).join('')}</div>`
+      } else {
+         const calha = (lado, itensDaCalha) =>
+            `<div class="colagem-calha colagem-${lado}">${itensDaCalha.map(desenhar).join('')}</div>`
+
+         // uma peça só no centro ganha classe própria: a caixa dela encosta na foto em vez
+         // de esticar até o pé do quadro e virar um retângulo claro com a peça boiando
+         const centro = principal.length === 1
+            ? 'colagem-principal colagem-principal-unica'
+            : 'colagem-principal'
+
+         canvas.innerHTML =
+            (calhas === 2 ? calha('esquerda', esquerda) : '') +
+            `<div class="${centro}">${principal.map(desenhar).join('')}</div>` +
+            (calhas >= 1 ? calha('direita', direita) : '')
+      }
 
       canvas.querySelectorAll('.look-slot').forEach(el => {
          this.ligarRemocao(el)
@@ -591,7 +640,7 @@ const LooksPage = {
       a.click()
    },
 
-   // monta uma imagem do look (peça de cima e de baixo no centro, extras embaixo)
+   // monta uma imagem do look (peças grandes no centro, extras nas calhas dos lados)
    // e abre o compartilhamento do celular. No computador, baixa a imagem.
    async shareLook() {
       const look    = this._detailLook
@@ -603,9 +652,12 @@ const LooksPage = {
       btn.textContent = 'Gerando imagem...'
 
       try {
-         // mesma decisão de layout da colagem, com dois acessórios em vez de três porque
-         // a fileira de baixo aqui tem 1080px de largura e não cabe um quinto quadro
-         const { principal, extras } = arranjoDoLook(clothes.map(c => ({ cloth: c })), 2)
+         // Mesma decisão de layout da colagem, e agora sem nenhum ajuste: o maxAcessorios
+         // que existia aqui cortava o terceiro acessório porque a fileira de baixo tinha
+         // 1080px de largura e não cabia um quinto quadro. Com os extras nas calhas o
+         // limite virou altura, e 1350px engole três empilhados sem aperto. Ou seja, o que
+         // a pessoa monta é o que ela compartilha.
+         const { principal, extras, esquerda, direita } = arranjoDoLook(clothes.map(c => ({ cloth: c })))
          const all = [...principal, ...extras].map(i => i.cloth)
          const corpoInteiro = principal.length === 1 && zoneOf(principal[0].cloth.type) === 'full'
 
@@ -636,19 +688,49 @@ const LooksPage = {
             ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh)
          }
 
-         if (corpoInteiro) {
-            draw(principal[0].cloth, 290, 180, 500, 740)
+         // As mesmas proporções da colagem, só que em pixel: calha de 22% da área útil de
+         // cada lado e o centro no que sobra. A área começa embaixo do título.
+         const MARGEM = 60, GAP = 26, TOPO = 180, BASE = 1290
+         const util       = W - MARGEM * 2
+         const alturaUtil = BASE - TOPO
+         // mesma contagem de calhas da colagem, pelo mesmo motivo
+         const calhas  = !extras.length || !principal.length ? 0 : (principal.length > 1 ? 2 : 1)
+         const calhaW  = calhas ? Math.round(util * 0.22) : 0
+         const centroW = util - (calhaW + GAP) * calhas
+         const centroX = MARGEM + (calhas === 2 ? calhaW + GAP : 0)
+
+         if (!principal.length) {
+            // look só de acessório, mesmo caso da colagem: sem centro, vira um bloco de
+            // duas colunas no meio do quadro
+            const cols = Math.min(extras.length, 2)
+            const rows = Math.ceil(extras.length / cols)
+            const box  = Math.min((util - (cols - 1) * GAP) / cols,
+                                  (alturaUtil - (rows - 1) * GAP) / rows)
+            const blocoW = cols * box + (cols - 1) * GAP
+            const blocoH = rows * box + (rows - 1) * GAP
+            extras.forEach((item, i) => {
+               const cx = MARGEM + (util - blocoW) / 2 + (i % cols) * (box + GAP)
+               const cy = TOPO + (alturaUtil - blocoH) / 2 + Math.floor(i / cols) * (box + GAP)
+               draw(item.cloth, cx, cy, box, box)
+            })
+         } else if (corpoInteiro) {
+            draw(principal[0].cloth, centroX, TOPO, centroW, alturaUtil)
          } else {
-            if (principal[0]) draw(principal[0].cloth, 315, 180, 450, 410)
-            if (principal[1]) draw(principal[1].cloth, 345, 560, 390, 460)
+            const h = (alturaUtil - GAP) / 2
+            if (principal[0]) draw(principal[0].cloth, centroX, TOPO, centroW, h)
+            if (principal[1]) draw(principal[1].cloth, centroX, TOPO + h + GAP, centroW, h)
          }
 
-         if (extras.length) {
-            const boxW = 200, gap = 28
-            const totalW = extras.length * boxW + (extras.length - 1) * gap
-            let ex = (W - totalW) / 2
-            extras.forEach(i => { draw(i.cloth, ex, 1070, boxW, boxW); ex += boxW + gap })
-         }
+         // A esquerda empilha do topo pra baixo e a direita da base pra cima. É só isso que
+         // produz o escalonamento em diagonal, o mesmo da colagem: com um extra de cada lado
+         // eles não ficam parados na mesma altura.
+         esquerda.forEach((item, i) => {
+            draw(item.cloth, MARGEM, TOPO + i * (calhaW + GAP), calhaW, calhaW)
+         })
+         const direitaX = centroX + centroW + GAP
+         direita.forEach((item, i) => {
+            draw(item.cloth, direitaX, BASE - calhaW - i * (calhaW + GAP), calhaW, calhaW)
+         })
 
          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'))
          if (!blob) throw new Error('sem imagem')
