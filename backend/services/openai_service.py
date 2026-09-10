@@ -11,14 +11,75 @@ client = AsyncOpenAI(
    base_url="https://api.groq.com/openai/v1"
 )
 
+# Um look só tem cinco espaços desenháveis na colagem: parte de cima, parte de baixo,
+# calçado, bolsa e acessório. O teto não é capricho de formato, é o que segura o tamanho da
+# resposta: cada id é um uuid e custa perto de 30 tokens, então pedir seis peças já estoura
+# o orçamento de saída e a lista volta cortada no meio.
+MAX_PECAS_NO_LOOK = 5
+
+# Todo id de peça é um uuid. Serve pra pescar ids de uma resposta que não parseou como JSON,
+# que na prática é sempre uma lista cortada no meio de um id.
+_UUID = re.compile(
+   r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+   re.IGNORECASE
+)
+
+# Embrulhos que o modelo põe em volta do JSON quando resolve ser prestativo. Medido em
+# respostas reais: cerca de markdown e um bloco <tool_call><function json>.
+_CERCA_MARKDOWN = re.compile(r"```[a-z]*", re.IGNORECASE)
+_TAG_SOLTA      = re.compile(r"</?[a-z_][a-z0-9_ ]*>", re.IGNORECASE)
+
+
 def _extract_json(content: str) -> str:
-   """Remove markdown fences e tenta extrair o objeto JSON caso o modelo adicione texto extra."""
-   content = content.replace("```json", "").replace("```", "").strip()
+   """Tira o embrulho e devolve só o objeto JSON, quando dá pra achar um.
+
+   O modelo devolve JSON limpo na maioria das vezes, mas quando não devolve o embrulho é
+   sempre um destes: cerca de markdown, uma tag no estilo <tool_call>, ou uma frase antes do
+   objeto. Nenhum deles é motivo pra jogar a resposta fora."""
+   content = _CERCA_MARKDOWN.sub("", content)
+   content = _TAG_SOLTA.sub("", content).strip()
    if not content.startswith("{"):
       match = re.search(r"\{.*\}", content, re.DOTALL)
       if match:
          content = match.group(0)
    return content
+
+
+def _ids_do_look(content: str, ids_validos: set) -> list:
+   """Tira os ids das peças da resposta da IA e devolve só os que existem mesmo no armário.
+
+   São duas camadas porque o modelo erra de dois jeitos diferentes, os dois medidos em 24
+   gerações reais:
+
+   1. Ele embrulha o JSON. O _extract_json desembrulha e o json.loads resolve.
+   2. Ele lista peças demais e a resposta volta cortada no meio de um id. Aí não existe JSON
+      pra parsear, mas os ids que vieram inteiros continuam ali, então a gente pesca por
+      formato de uuid em vez de descartar a resposta toda. Era este o caso de 10 das 24.
+
+   A conferência contra o armário no fim é o que torna a pescaria segura: id cortado pela
+   metade, id inventado ou id de outra pessoa não está no conjunto e cai fora sozinho.
+
+   Também cobre um terceiro caso mais silencioso: o modelo às vezes responde
+   {"error": {"message": ...}} explicando que não dava pra montar o look. Isso parseava bem
+   e virava lista vazia sem ninguém reclamar, ou seja, look vazio na tela sem erro nenhum.
+   Aqui vira lista vazia explícita, e quem chama trata como tentativa que não deu."""
+   try:
+      resultado = json.loads(_extract_json(content))
+      ids = resultado.get("clothes_ids") if isinstance(resultado, dict) else None
+   except (json.JSONDecodeError, AttributeError):
+      ids = None
+
+   if not ids:
+      ids = _UUID.findall(content)
+
+   vistos, limpos = set(), []
+   for cid in ids:
+      cid = str(cid)
+      if cid in ids_validos and cid not in vistos:
+         vistos.add(cid)
+         limpos.append(cid)
+
+   return limpos[:MAX_PECAS_NO_LOOK]
 
 async def _chamar_ia(funcao: str, max_retries: int = None, **kwargs):
    """Chama a Groq e, quando dá errado, deixa registrado qual dos dois problemas aconteceu,
@@ -166,29 +227,59 @@ Peças disponíveis:
 
 Regras:
 - Escolha no máximo 1 peça por categoria (1 top, 1 calça/saia, 1 calçado, etc.)
+- No máximo {MAX_PECAS_NO_LOOK} peças no total, e pelo menos 2
 - Priorize combinações harmoniosas de cor e estilo
 - Adapte ao modo solicitado: {mode}
-- Retorne SOMENTE JSON, sem texto extra
+- Responda com o objeto JSON e mais nada: sem cerca de markdown, sem explicação, sem texto antes nem depois
 
 Formato obrigatório:
 {{"clothes_ids": ["id1", "id2", "id3"]}}"""
 
-   response = await _chamar_ia(
-      "generate_look_ai",
-      # o mesmo modelo da visão, aqui só no modo texto: ele escolhe as peças e devolve os
-      # ids. Vale a mesma ressalva de Preview escrita no categorize_clothing.
-      model="qwen/qwen3.8-27b",
-      messages=[{"role": "user", "content": prompt}],
-      max_tokens=200
-   )
+   ids_validos = {c["id"] for c in clothes}
+   content     = ""
 
-   content = _extract_json(response.choices[0].message.content.strip())
+   # Duas tentativas.
+   #
+   # A primeira quase sempre basta agora que o teto de saída cabe a resposta inteira. A
+   # segunda existe porque o custo de insistir é uma chamada e o custo de não insistir é um
+   # 500 na cara de quem pediu o look.
+   #
+   # Sobre orçamento, que é a parte que costuma passar batida: a retentativa NÃO gasta uma
+   # das 20 gerações por hora, porque o balde é conferido uma vez só, lá na rota. O que ela
+   # consome é o teto de 8000 tokens por minuto da Groq, que é do app inteiro. Este prompt
+   # custa perto de 1700 tokens medidos, então no pior caso uma geração passa a valer por
+   # duas nesse teto. Como as falhas ficaram raras depois do ajuste de max_tokens, o custo
+   # médio esperado é bem menor que isso.
+   for tentativa in (1, 2):
+      response = await _chamar_ia(
+         "generate_look_ai",
+         # o mesmo modelo da visão, aqui só no modo texto: ele escolhe as peças e devolve os
+         # ids. Vale a mesma ressalva de Preview escrita no categorize_clothing.
+         model="qwen/qwen3.8-27b",
+         messages=[{"role": "user", "content": prompt}],
+         # 400 e não 200. Medido em 24 gerações com o teto antigo: 13 voltaram com
+         # finish_reason "length" e 10 delas não parseavam, ou seja, 42% de erro 500 só por
+         # falta de espaço pra terminar a frase. Um uuid custa perto de 30 tokens e o modelo
+         # chegava a listar seis peças, o que não cabia em 200 de jeito nenhum. Aumentar o
+         # teto não custa nada por si: a Groq cobra o que foi gerado, não o que foi
+         # reservado, e a saída média medida é de 172 tokens.
+         max_tokens=400
+      )
 
-   try:
-      result = json.loads(content)
-      return result.get("clothes_ids", [])
-   except (json.JSONDecodeError, AttributeError):
-      raise ValueError(f"IA retornou JSON inválido: {content[:200]}")
+      content = response.choices[0].message.content.strip()
+      ids     = _ids_do_look(content, ids_validos)
+
+      # Menos de duas peças não é look, é peça solta. Pode ser resposta cortada cedo demais,
+      # pode ser o modelo dizendo que não dá pra montar. Nos dois casos vale tentar de novo.
+      if len(ids) >= 2:
+         return ids
+
+      logger.warning(
+         f"generate_look_ai: tentativa {tentativa} não rendeu look "
+         f"(finish={response.choices[0].finish_reason}, {len(ids)} peça(s) válida(s))"
+      )
+
+   raise ValueError(f"IA não devolveu peças válidas do armário: {content[:200]}")
 
 async def chat_with_stylist(
    message: str,
