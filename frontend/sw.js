@@ -29,7 +29,7 @@
 //    })
 // ------------------------------------------------------------------------------------
 
-const VERSAO = 'v4'
+const VERSAO = 'v5'
 const CACHE  = `entrelooks-${VERSAO}`
 
 // O que e guardado. Sao os arquivos que o index.html carrega em toda visita, ou seja, o

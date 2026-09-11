@@ -125,6 +125,41 @@
    }
 }
 
+/* Peça que a Mira marcou no meio da conversa. Deliberadamente mais discreto que a sugestão
+   de look logo abaixo: sem cartão, sem botão e com a miniatura pequena, porque isto ilustra
+   o que ela disse em vez de propor uma ação. */
+.chat-pecas {
+   align-self: flex-start;
+   display: flex;
+   gap: var(--space-sm);
+   margin-top: calc(var(--space-xs) * -1);
+   padding-left: var(--space-xs);
+   animation: bubbleIn 0.35s var(--ease-spring) both;
+}
+
+.chat-peca {
+   margin: 0;
+   width: 64px;
+}
+
+.chat-peca img {
+   width: 64px;
+   height: 64px;
+   object-fit: contain;
+   background: var(--surface);
+   border-radius: var(--radius-sm);
+}
+
+.chat-peca figcaption {
+   margin-top: 3px;
+   font-size: 11px;
+   line-height: 1.25;
+   color: var(--text-muted);
+   text-align: center;
+   /* nome comprido não pode alargar a miniatura, senão as duas desalinham */
+   overflow-wrap: anywhere;
+}
+
 /* Sugestão de look que a Mira faz no chat. Fica logo abaixo da bolha, como um bloco
    próprio, e não dentro dela: a bolha tem padding e cantos de balão de conversa, que
    apertariam as miniaturas. */

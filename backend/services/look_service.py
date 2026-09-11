@@ -155,6 +155,110 @@ def _desempatar(candidatas: list) -> list:
 # marcação de markdown na frente porque o modelo às vezes escreve "**Look:**".
 LINHA_LOOK = re.compile(r"^[ \t*_#>-]*look\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 
+# A linha que ela escreve quando quer que o app mostre a foto de UMA peça específica, em vez
+# de um look inteiro. Mesma ideia da LINHA_LOOK e pelo mesmo motivo: quem sabe se aquilo é um
+# ponteiro pra uma peça ou só uma menção de passagem é ela, não a gente.
+#
+# Aceita "peça" e "peca" porque o modelo às vezes escorrega no acento.
+#
+# São duas formas de achar a marcação, e elas têm confiança diferente.
+#
+# A primeira é a linha própria, que é como o prompt pede. Não tem como confundir com prosa,
+# então ela pode sair do texto sempre.
+#
+# A segunda é a marcação colada no fim do último parágrafo, que foi medido acontecendo: ela
+# escreveu "... ou ajustar num alfaiate. Peça: calça preta" tudo na mesma linha, e sem isso
+# a marcação aparecia crua na tela. Aqui a confiança é menor, porque "peça" também é verbo
+# em português, e na MESMA resposta apareceu "peça pra dobrar a barra". Por isso essa forma
+# exige três coisas juntas: vir depois de um ponto final, ter os dois pontos logo em seguida,
+# e ser a última coisa da mensagem.
+LINHA_PECA = re.compile(r"^[ \t*_#>-]*pe[çc]a\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+CAUDA_PECA = re.compile(r"(?:(?<=[.!?])|\A)\s*pe[çc]a\s*:\s*([^\n]+?)\s*\Z", re.IGNORECASE)
+
+# Quantas peças a marcação mostra por mensagem, e o número não é chute. Medindo o casamento
+# por texto em respostas reais, a Mira cita de cinco a sete peças por mensagem quando está
+# explicando alguma coisa. Foto pra tudo isso vira poluição, que foi exatamente o motivo de
+# não casar a prosa inteira. Duas mantém a marcação como ponteiro, não como catálogo.
+MAX_PECAS_CITADAS = 2
+
+
+def separar_linha_peca(resposta: str):
+   """Separa a linha "Peça: ..." do resto da mensagem.
+
+   Diferente da linha do Look, esta SEMPRE sai do texto, tenha casado peça ou não. A do Look
+   sobrevive quando não casa porque ela é uma lista legível, que funciona como resumo
+   escrito. Já um "Peça: calça preta" solto no fim da conversa não acrescenta nada: a peça
+   já foi citada na frase logo acima, então a linha só leria como marcação vazando pra tela.
+
+   Devolve (trecho, resposta_sem_a_marcação, corte_seguro).
+
+   O corte_seguro diz se dá pra tirar a marcação do texto mesmo quando ela não casar peça
+   nenhuma. Marcação em linha própria é inconfundível e sai sempre. Marcação colada no fim
+   do parágrafo pode ser frase de verdade ("Escolha a peça: a preta ou a oliva"), então ela
+   só deve sair quando casar, e quem decide isso é quem chama.
+
+   Sem marcação nenhuma, devolve (None, resposta, True).
+   """
+   achados = list(LINHA_PECA.finditer(resposta or ""))
+   if achados:
+      ultimo = achados[-1]
+      trecho = ultimo.group(1).strip(" *_")
+      limpa  = (resposta[:ultimo.start()] + resposta[ultimo.end():]).strip()
+
+      # Mensagem que era só a marcação deixaria a bolha vazia. Aqui a saída é diferente da
+      # linha do Look: em vez de devolver a resposta inteira, que mostraria o prefixo
+      # "Peça:" cru na tela, devolve só o nome da peça. A bolha fica com "calça preta" e a
+      # foto entra logo abaixo, que é o que a marcação queria dizer de qualquer jeito.
+      return trecho, (limpa or trecho), True
+
+   cauda = CAUDA_PECA.search(resposta or "")
+   if cauda:
+      trecho = cauda.group(1).strip(" *_")
+      limpa  = resposta[:cauda.start()].strip()
+      return trecho, (limpa or trecho), False
+
+   return None, resposta, True
+
+
+def encontrar_pecas_citadas(trecho: str, pecas: list) -> list:
+   """Devolve as peças do armário que a Mira marcou, no máximo MAX_PECAS_CITADAS.
+
+   Reusa o mesmo casamento da sugestão de look, então peça que a pessoa não tem simplesmente
+   não casa e não aparece, sem precisar de validação separada.
+
+   A diferença pro encontrar_look_citado é que aqui não existe regra de espaço nem mínimo de
+   duas peças: uma peça sozinha é justamente o caso que esta marcação serve pra cobrir.
+   """
+   if not trecho or not pecas:
+      return []
+
+   texto      = _normalizar(trecho)
+   candidatas = _desempatar(_candidatas(texto, pecas))
+
+   # Duas peças de mesmo tipo e mesma cor são indistinguíveis no texto e mostrariam duas
+   # fotos iguais lado a lado. O _desempatar já pôs a mais usada na frente, então basta
+   # ficar com a primeira de cada par tipo mais cor.
+   vistos, escolhidas = set(), []
+   for p in candidatas:
+      chave = (_normalizar(p.get("type")), _normalizar(p.get("color")))
+      if chave in vistos:
+         continue
+      vistos.add(chave)
+      escolhidas.append(p)
+
+   # Ordena pela posição em que cada peça aparece na linha, e não pela ordem do armário.
+   # Isso importa por causa do corte logo abaixo: quando ela marca três peças, as duas que
+   # ficam devem ser as duas que ela escreveu primeiro, porque a escolha é dela. Sem isto o
+   # corte saía na ordem do _desempatar, que é por uso, e podia descartar justamente a peça
+   # que a frase estava comentando.
+   def _posicao(peca):
+      achado = re.search(_palavra(_normalizar(peca.get("type"))), texto)
+      return achado.start() if achado else len(texto)
+
+   escolhidas.sort(key=_posicao)
+
+   return escolhidas[:MAX_PECAS_CITADAS]
+
 
 def separar_linha_look(resposta: str):
    """Separa a linha "Look: ..." do resto da mensagem.

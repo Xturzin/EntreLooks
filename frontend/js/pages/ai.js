@@ -60,6 +60,7 @@ const AIPage = {
          // Trocar de aba destrói o DOM do chat e ele é remontado a partir daqui, então a
          // sugestão precisa ser redesenhada junto, senão ela some ao ir no Armário e voltar.
          if (msg.sugestao) this.renderSugestao(div, msg.sugestao)
+         else if (msg.pecas) this.renderPecas(div, msg.pecas)
       })
       messages.scrollTop = messages.scrollHeight
    },
@@ -104,16 +105,18 @@ const AIPage = {
             const data    = await response.json()
             const bolhaId = this.addBubble('ai', data.reply)
 
-            // O campo sugestao só vem quando a resposta descreve um look montável com
-            // peças que a pessoa tem. Quando não vem, a bolha fica como sempre foi.
-            if (data.sugestao) {
-               this.renderSugestao(document.getElementById(bolhaId), data.sugestao)
-            }
+            // Os dois campos são opcionais e nunca vêm juntos: sugestao é o look inteiro
+            // com botão de montar, pecas é a foto de uma peça que ela citou. Quando nenhum
+            // vem, a bolha fica como sempre foi.
+            const bolha = document.getElementById(bolhaId)
+            if (data.sugestao) this.renderSugestao(bolha, data.sugestao)
+            else if (data.pecas) this.renderPecas(bolha, data.pecas)
 
             this.history.push({
                role:     'assistant',
                content:  data.reply,
-               sugestao: data.sugestao || null
+               sugestao: data.sugestao || null,
+               pecas:    data.pecas || null
             })
          } else if (response) {
             this.history.pop()
@@ -165,6 +168,33 @@ const AIPage = {
          LooksPage.sugestaoPendente = sugestao.clothes_ids
          navigate('looks')
       })
+
+      const messages = document.getElementById('chat-messages')
+      if (messages) messages.scrollTop = messages.scrollHeight
+   },
+
+   // A peça que a Mira marcou com a linha "Peça:". É de propósito um desenho diferente da
+   // sugestão de look: sem botão, miniatura menor e o nome embaixo.
+   //
+   // O motivo é que as duas coisas pedem ações diferentes. A sugestão de look é um convite
+   // pra fazer algo (montar), então ela tem botão e miniatura grande. A peça citada é
+   // ilustração do que ela acabou de dizer, então ela só precisa ser reconhecível. Dar
+   // botão aqui faria a pessoa achar que é sugestão de look de uma peça só.
+   renderPecas(bolha, pecas) {
+      if (!bolha || !pecas?.length) return
+
+      const bloco     = document.createElement('div')
+      bloco.className = 'chat-pecas'
+      bloco.innerHTML = pecas.map(c => `
+         <figure class="chat-peca">
+            <img src="${escapeHtml(urlMiniatura(c.image_url, 64, 64))}"
+                 onerror="this.onerror=null;this.src='${escapeHtml(c.image_url)}'"
+                 alt="${escapeHtml(c.type || '')}" loading="lazy">
+            <figcaption>${escapeHtml([c.type, c.color].filter(Boolean).join(' '))}</figcaption>
+         </figure>
+      `).join('')
+
+      bolha.insertAdjacentElement('afterend', bloco)
 
       const messages = document.getElementById('chat-messages')
       if (messages) messages.scrollTop = messages.scrollHeight

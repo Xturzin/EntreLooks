@@ -8,7 +8,10 @@ from typing import List, Optional
 from dependencies import get_current_user
 from services.supabase_service import supabase
 from services.openai_service import chat_with_stylist
-from services.look_service import encontrar_look_citado, separar_linha_look
+from services.look_service import (
+   separar_linha_look, encontrar_look_citado,
+   separar_linha_peca, encontrar_pecas_citadas,
+)
 from services.rate_limiter import rate_limiter
 
 logger = logging.getLogger(__name__)
@@ -116,42 +119,68 @@ async def _get_key_pieces(user_id: str) -> dict:
    except Exception:
       return {}
 
+def _resumo_da_peca(p: dict) -> dict:
+   """Só o que a bolha precisa desenhar, em vez da linha inteira do banco."""
+   return {
+      "id":        p["id"],
+      "type":      p.get("type"),
+      "color":     p.get("color"),
+      "image_url": p.get("image_url"),
+   }
+
 def _sugestao_de_look(reply: str, clothes: list) -> tuple:
-   """Devolve (resposta_pra_mostrar, extras) onde extras traz o campo "sugestao" quando a
-   Mira sugeriu um look montável, ou vem vazio quando não sugeriu.
+   """Devolve (resposta_pra_mostrar, extras).
+
+   São duas marcações que a Mira pode usar, e o extras traz no máximo uma delas:
+
+   - "sugestao", quando ela fechou com a linha Look:, que é um look inteiro pra vestir.
+   - "pecas", quando ela fechou com a linha Peça:, que aponta uma peça específica do
+     armário pra ilustrar o que ela acabou de falar.
+
+   As duas na mesma mensagem não convivem, e por isso o look ganha: seriam duas tiras de
+   miniatura numa bolha só, e a de baixo repetiria peça que já está na de cima. O look leva
+   a preferência porque ele traz o botão de montar, que é ação; a peça citada é ilustração.
 
    O try é estreito de propósito: ele cobre só o casamento, e não a conversa. A resposta da
    Mira já está pronta e é o que a pessoa veio buscar, então um erro aqui pode custar a
    miniatura, nunca a mensagem.
    """
    try:
-      linha, sem_linha = separar_linha_look(reply)
-      pecas = encontrar_look_citado(linha, clothes) if linha else []
+      # A ordem importa. A linha Peça: sai sempre, então ela é tirada primeiro e o que
+      # sobra é o texto que a pessoa lê quando nada casa. A do Look só sai se casar, então
+      # ela é separada depois e o texto sem ela fica guardado pra esse caso.
+      linha_peca, sem_peca, corte_seguro = separar_linha_peca(reply)
+      linha_look, sem_duas = separar_linha_look(sem_peca)
+
+      do_look = encontrar_look_citado(linha_look, clothes) if linha_look else []
+      citadas = (
+         encontrar_pecas_citadas(linha_peca, clothes)
+         if linha_peca and not do_look else []
+      )
    except Exception as e:
       logger.warning(f"Falha ao casar peças da sugestão: {type(e).__name__}: {e}")
       return reply, {}
 
-   if not pecas:
-      # Sem peças casadas a linha continua no texto: ela é legível e vale mais como
-      # resumo do que sumindo sem deixar nada no lugar.
-      return reply, {}
-
-   # Casou, então as miniaturas substituem a lista escrita e ela sai do texto.
-   return sem_linha, {
-      "sugestao": {
-         "clothes_ids": [p["id"] for p in pecas],
-         # só o que a bolha precisa desenhar, em vez da linha inteira do banco
-         "clothes": [
-            {
-               "id":        p["id"],
-               "type":      p.get("type"),
-               "color":     p.get("color"),
-               "image_url": p.get("image_url"),
-            }
-            for p in pecas
-         ],
+   if do_look:
+      # Casou o look, então as miniaturas substituem a lista escrita e ela sai do texto.
+      return sem_duas, {
+         "sugestao": {
+            "clothes_ids": [p["id"] for p in do_look],
+            "clothes":     [_resumo_da_peca(p) for p in do_look],
+         }
       }
-   }
+
+   if citadas:
+      return sem_peca, {"pecas": [_resumo_da_peca(p) for p in citadas]}
+
+   # Nada casou. O texto vai COM a linha Look: se ela existir, porque essa é legível e vale
+   # como resumo escrito.
+   #
+   # Já a marcação de peça só sai daqui quando o corte é seguro, ou seja, quando ela estava
+   # em linha própria. Marcação colada no fim de um parágrafo e que não casou peça nenhuma
+   # pode ser uma frase de verdade, e comer frase da Mira é pior do que deixar um "Peça:"
+   # aparecendo uma vez a cada tantas conversas.
+   return (sem_peca if corte_seguro else reply), {}
 
 @router.post("/chat")
 async def chat(data: ChatRequest, user=Depends(get_current_user)):
